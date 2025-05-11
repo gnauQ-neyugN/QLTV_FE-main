@@ -1,4 +1,3 @@
-/* eslint-disable jsx-a11y/anchor-is-valid */
 import React, { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import GenreModel from "../../model/GenreModel";
@@ -14,11 +13,14 @@ import {
 import { Avatar, Button } from "@mui/material";
 import { useAuth } from "../utils/AuthContext";
 import { useCartItem } from "../utils/CartItemContext";
+import { useBorrowCart } from "../utils/BorrowCartContext";
+import NavbarBorrowButton from "./components/NavbarBorrowButton";
 
 interface NavbarProps {}
 
 const Navbar: React.FC<NavbarProps> = (props) => {
 	const { totalCart, setTotalCart, setCartList } = useCartItem();
+	const { setTotalBorrowItems, setBorrowCartList } = useBorrowCart();
 	const { setLoggedIn } = useAuth();
 	const navigate = useNavigate();
 
@@ -123,11 +125,13 @@ const Navbar: React.FC<NavbarProps> = (props) => {
 							</Link>
 						</li>
 						{isToken() && (
-							<li className='nav-item'>
-								<NavLink className='nav-link' to={"/feedback"}>
-									Feedback
-								</NavLink>
-							</li>
+							<>
+								<li className='nav-item'>
+									<NavLink className='nav-link' to={"/feedback"}>
+										Feedback
+									</NavLink>
+								</li>
+							</>
 						)}
 					</ul>
 					{/* <!-- Left links --> */}
@@ -139,9 +143,13 @@ const Navbar: React.FC<NavbarProps> = (props) => {
 					<Link className='text-reset me-3' to='/cart'>
 						<i className='fas fa-shopping-cart'></i>
 						<span className='badge rounded-pill badge-notification bg-danger'>
-							{totalCart ? totalCart : ""}
-						</span>
+                            {totalCart ? totalCart : ""}
+                        </span>
 					</Link>
+
+					{/* <!-- Borrow Cart --> */}
+					{isToken() && <NavbarBorrowButton />}
+
 					{!isToken() && (
 						<div>
 							<Link to={"/login"}>
@@ -167,8 +175,8 @@ const Navbar: React.FC<NavbarProps> = (props) => {
 								>
 									<i className='fas fa-bell'></i>
 									<span className='badge rounded-pill badge-notification bg-danger'>
-										1
-									</span>
+                                        1
+                                    </span>
 								</a>
 								<ul
 									className='dropdown-menu dropdown-menu-end'
@@ -225,6 +233,14 @@ const Navbar: React.FC<NavbarProps> = (props) => {
 											Sách yêu thích của tôi
 										</Link>
 									</li>
+									<li>
+										<Link
+											className='dropdown-item'
+											to='/borrow-records'
+										>
+											Phiếu mượn của tôi
+										</Link>
+									</li>
 									{getRoleByToken() === "ADMIN" && (
 										<li>
 											<Link
@@ -241,9 +257,12 @@ const Navbar: React.FC<NavbarProps> = (props) => {
 											style={{ cursor: "pointer" }}
 											onClick={() => {
 												setTotalCart(0);
+												setTotalBorrowItems(0);
 												logout(navigate);
 												setLoggedIn(false);
 												setCartList([]);
+												setBorrowCartList([]);
+												localStorage.removeItem("borrowCart");
 											}}
 										>
 											Đăng xuất

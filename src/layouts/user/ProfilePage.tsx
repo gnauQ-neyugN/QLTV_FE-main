@@ -34,15 +34,30 @@ import CheckIcon from "@mui/icons-material/Check";
 import { useAuth } from "../utils/AuthContext";
 import { useNavigate } from "react-router-dom";
 import useScrollToTop from "../../hooks/ScrollToTop";
+import { Alert, Card, CardContent, Typography } from "@mui/material";
+import LibraryAddIcon from '@mui/icons-material/LibraryAdd';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 
 interface ProfilePageProps {
 	setReloadAvatar: any;
 }
 
+// Interface cho thông tin thẻ thư viện
+interface LibraryCardInfo {
+	idLibraryCard: number;
+	cardNumber: string;
+	issuedDate: string;
+	expiryDate: string;
+	activated: boolean;
+	// Các thông tin khác nếu cần
+}
+
 const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 	useScrollToTop(); // Mỗi lần vào component này thì sẽ ở trên cùng
 
-	const { isLoggedIn } = useAuth();
+	const {isLoggedIn} = useAuth();
 	const navigation = useNavigate();
 
 	useLayoutEffect(() => {
@@ -71,6 +86,10 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 	const [dataAvatar, setDataAvatar] = useState("");
 	const [previewAvatar, setPreviewAvatar] = useState("");
 
+	// Thông tin thẻ thư viện
+	const [libraryCard, setLibraryCard] = useState<LibraryCardInfo | null>(null);
+	const [loadingLibraryCard, setLoadingLibraryCard] = useState(true);
+
 	// reload lại component order table
 	const [keyCountReload, setKeyCountReload] = useState(0);
 
@@ -79,6 +98,18 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 	const [openModal, setOpenModal] = React.useState(false);
 	const handleOpenModal = () => setOpenModal(true);
 	const handleCloseModal = () => setOpenModal(false);
+
+	// Xử lý modal tạo thẻ thư viện
+	const [openCreateCardModal, setOpenCreateCardModal] = React.useState(false);
+	const [newCardNumber, setNewCardNumber] = useState("");
+	const [cardNumberError, setCardNumberError] = useState("");
+	const handleOpenCreateCardModal = () => setOpenCreateCardModal(true);
+	const handleCloseCreateCardModal = () => setOpenCreateCardModal(false);
+
+	// Xử lý modal gia hạn thẻ thư viện
+	const [openRenewCardModal, setOpenRenewCardModal] = React.useState(false);
+	const handleOpenRenewCardModal = () => setOpenRenewCardModal(true);
+	const handleCloseRenewCardModal = () => setOpenRenewCardModal(false);
 
 	// Các biến trạng thái
 	const [modifiedStatus, setModifiedStatus] = useState(false);
@@ -101,11 +132,149 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 				setPreviewAvatar(response.avatar);
 			})
 			.catch((error) => console.log(error));
+
+		// Lấy thông tin thẻ thư viện
+		fetchLibraryCard(idUser);
 	}, []);
+
+	// Hàm lấy thông tin thẻ thư viện
+	const fetchLibraryCard = (userId: number) => {
+		setLoadingLibraryCard(true);
+		const token = localStorage.getItem("token");
+
+		fetch(`${endpointBE}/users/${userId}/libraryCard`, {
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		})
+			.then(response => {
+				if (response.ok) {
+					return response.json();
+				}
+				return null;
+			})
+			.then(data => {
+				if (data && data.cardNumber) {
+					setLibraryCard(data);
+				} else {
+					setLibraryCard(null);
+				}
+				setLoadingLibraryCard(false);
+			})
+			.catch(error => {
+				console.error("Error fetching library card:", error);
+				setLibraryCard(null);
+				setLoadingLibraryCard(false);
+			});
+	};
+
+	const handleCreateLibraryCard = () => {
+		const token = localStorage.getItem("token");
+		console.log("Current token:", token ? "Token exists" : "No token");
+
+		// Validate card number
+		if (!newCardNumber) {
+			setCardNumberError("Vui lòng nhập mã thẻ thư viện");
+			return;
+		}
+
+		// Get user ID
+		const userId = user.idUser;
+		console.log("User ID for library card:", userId);
+
+		if (!userId) {
+			toast.error("Không thể xác định người dùng. Vui lòng đăng nhập lại.");
+			return;
+		}
+
+		const requestData = {
+			idUser: userId,
+			cardNumber: newCardNumber
+		};
+		console.log("Request data:", requestData);
+
+		// Thử cả POST và PUT
+		const method = "PUT"; // Thử POST trước (như trong backend code bạn chia sẻ)
+
+		console.log(`Calling API with ${method} method to ${endpointBE}/library-card/create`);
+
+		fetch(`${endpointBE}/library-card/create`, {
+			method: method,
+			headers: {
+				Authorization: `Bearer ${token}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(requestData),
+		})
+			.then(response => {
+				console.log("Response status:", response.status);
+				console.log("Response ok:", response.ok);
+
+				// Đọc response body dù có lỗi hay không
+				return response.text().then(text => {
+					if (!response.ok) {
+						console.error("Error response:", text);
+						throw new Error(`Lỗi API: ${response.status} - ${text}`);
+					}
+
+					// Thử parse JSON nếu có thể
+					try {
+						return text ? JSON.parse(text) : {};
+					} catch (e) {
+						console.log("Raw response (not JSON):", text);
+						return {};
+					}
+				});
+			})
+			.then(data => {
+				console.log("Success response data:", data);
+				setLibraryCard(data);
+				setNewCardNumber("");
+				handleCloseCreateCardModal();
+				toast.success("Tạo thẻ thư viện thành công!");
+			})
+			.catch(error => {
+				console.error("Complete error details:", error);
+				toast.error(`Không thể tạo thẻ thư viện: ${error.message}`);
+			});
+	};
+
+	// Hàm gia hạn thẻ thư viện
+	const handleRenewLibraryCard = () => {
+		const token = localStorage.getItem("token");
+
+		toast.promise(
+			fetch(`${endpointBE}/library-card/renew`, {
+				method: "PUT",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					idLibraryCard: libraryCard?.idLibraryCard
+				}),
+			})
+				.then(response => {
+					if (response.ok) {
+						return response.json();
+					}
+					throw new Error("Không thể gia hạn thẻ thư viện");
+				})
+				.then(data => {
+					setLibraryCard(data);
+					return "Gia hạn thẻ thư viện thành công";
+				}),
+			{
+				pending: "Đang gia hạn thẻ thư viện...",
+				success: "Gia hạn thẻ thư viện thành công!",
+				error: "Không thể gia hạn thẻ thư viện. Vui lòng thử lại."
+			}
+		);
+	};
 
 	// Xử lý change só điện thoại
 	const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		setUser({ ...user, phoneNumber: e.target.value });
+		setUser({...user, phoneNumber: e.target.value});
 		setErrorPhoneNumber("");
 	};
 
@@ -197,7 +366,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 					setModifiedStatus(!modifiedStatus);
 					console.log(error);
 				}),
-			{ pending: "Đang trong quá trình xử lý ..." }
+			{pending: "Đang trong quá trình xử lý ..."}
 		);
 	}
 
@@ -222,7 +391,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 					}
 				})
 				.then((data) => {
-					const { jwtToken } = data;
+					const {jwtToken} = data;
 					localStorage.setItem("token", jwtToken);
 
 					toast.success("Cập nhật ảnh đại diện thành công");
@@ -236,7 +405,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 					setIsUploadAvatar(false);
 					console.log(error);
 				}),
-			{ pending: "Đang trong quá trình xử lý ..." }
+			{pending: "Đang trong quá trình xử lý ..."}
 		);
 	}
 
@@ -274,6 +443,13 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 			});
 	}
 
+	// Format date string
+	const formatDate = (dateString: string) => {
+		if (!dateString) return '';
+		const date = new Date(dateString);
+		return date.toLocaleDateString('vi-VN');
+	};
+
 	// Khúc này chủ yếu nếu mà không đăng nhập mà cố tình vào thì sẽ không render component ra
 	if (!isLoggedIn) {
 		return null;
@@ -282,14 +458,15 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 	return (
 		<div className='container my-5'>
 			<Grid container>
+				{/* Phần sidebar trái - avatar và email */}
 				<Grid item sm={12} md={12} lg={3}>
 					<div className='bg-light rounded py-3 me-lg-2 me-md-0 me-sm-0'>
 						<div className='d-flex align-items-center justify-content-center flex-column'>
 							<Avatar
-								style={{ fontSize: "50px" }}
+								style={{fontSize: "50px"}}
 								alt={user.lastName.toUpperCase()}
 								src={previewAvatar}
-								sx={{ width: 100, height: 100 }}
+								sx={{width: 100, height: 100}}
 							/>
 							{!isUploadAvatar ? (
 								<Button
@@ -297,7 +474,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 									size='small'
 									component='label'
 									variant='outlined'
-									startIcon={<CloudUpload />}
+									startIcon={<CloudUpload/>}
 								>
 									Upload avatar
 									<HiddenInputUpload
@@ -310,7 +487,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 										className='mt-4 me-2'
 										size='small'
 										variant='outlined'
-										startIcon={<CloseIcon />}
+										startIcon={<CloseIcon/>}
 										onClick={() => {
 											setPreviewAvatar(user.avatar);
 											setIsUploadAvatar(false);
@@ -323,7 +500,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 										className='mt-4 ms-2'
 										size='small'
 										variant='outlined'
-										startIcon={<CheckIcon />}
+										startIcon={<CheckIcon/>}
 										color='success'
 										onClick={handleSubmitAvatar}
 									>
@@ -337,28 +514,33 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 						</div>
 					</div>
 				</Grid>
+
+				{/* Phần nội dung chính - tabs */}
 				<Grid item sm={12} md={12} lg={9}>
 					<div
 						className='bg-light rounded px-2 ms-lg-2 ms-md-0 ms-sm-0 mt-lg-0 mt-md-3 mt-sm-3'
-						style={{ minHeight: "300px" }}
+						style={{minHeight: "300px"}}
 					>
-						<Box sx={{ width: "100%", typography: "body1" }}>
+						<Box sx={{width: "100%", typography: "body1"}}>
 							<TabContext value={value}>
-								<Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+								<Box sx={{borderBottom: 1, borderColor: "divider"}}>
 									<TabList
 										onChange={handleChange}
 										aria-label='lab API tabs example'
 									>
-										<Tab label='Thông tin cá nhân' value='1' />
-										<Tab label='Đơn hàng' value='2' />
-										<Tab label='Đổi mật khẩu' value='3' />
+										<Tab label='Thông tin cá nhân' value='1'/>
+										<Tab label='Đơn hàng' value='2'/>
+										<Tab label='Thẻ thư viện' value='4'/>
+										<Tab label='Đổi mật khẩu' value='3'/>
 									</TabList>
 								</Box>
+
+								{/* Tab Thông tin cá nhân */}
 								<TabPanel value='1'>
 									<form
 										onSubmit={handleSubmit}
 										className='form position-relative'
-										style={{ padding: "0 20px" }}
+										style={{padding: "0 20px"}}
 									>
 										{!modifiedStatus && (
 											<div
@@ -381,7 +563,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 														}
 													>
 														<EditOutlined
-															sx={{ width: "24px" }}
+															sx={{width: "24px"}}
 														/>
 													</Button>
 												</Tooltip>
@@ -492,7 +674,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 													fullWidth
 													className='input-field'
 													label='Ngày sinh'
-													style={{ width: "100%" }}
+													style={{width: "100%"}}
 													type='date'
 													value={
 														user.dateOfBirth
@@ -523,7 +705,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 																modifiedStatus ? false : true
 															}
 															value='M'
-															control={<Radio />}
+															control={<Radio/>}
 															label='Nam'
 														/>
 														<FormControlLabel
@@ -531,7 +713,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 																modifiedStatus ? false : true
 															}
 															value='F'
-															control={<Radio />}
+															control={<Radio/>}
 															label='Nữ'
 														/>
 													</RadioGroup>
@@ -544,7 +726,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 													fullWidth
 													variant='outlined'
 													type='submit'
-													sx={{ width: "50%", padding: "10px" }}
+													sx={{width: "50%", padding: "10px"}}
 												>
 													Lưu và thay đổi
 												</Button>
@@ -552,6 +734,8 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 										)}
 									</form>
 								</TabPanel>
+
+								{/* Tab Đơn hàng */}
 								<TabPanel value='2'>
 									<div>
 										<OrderTable
@@ -574,11 +758,242 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 										/>
 									</FadeModal>
 								</TabPanel>
+
+								{/* Tab Thẻ thư viện */}
+								<TabPanel value='4'>
+									{loadingLibraryCard ? (
+										<div className="text-center p-5">
+											<div className="spinner-border text-primary" role="status">
+												<span className="visually-hidden">Đang tải...</span>
+											</div>
+											<p className="mt-2">Đang tải thông tin thẻ thư viện...</p>
+										</div>
+									) : (
+										<>
+											{!libraryCard ? (
+												<div className="text-center p-5">
+													<Card className="mb-4">
+														<CardContent>
+															<div className="d-flex flex-column align-items-center">
+																<CreditCardIcon style={{
+																	fontSize: 60,
+																	color: '#1976d2',
+																	marginBottom: '1rem'
+																}}/>
+																<Typography variant="h5" component="div" gutterBottom>
+																	Bạn chưa có thẻ thư viện
+																</Typography>
+																<Typography variant="body1" color="text.secondary"
+																			paragraph>
+																	Bạn cần có thẻ thư viện để có thể mượn sách. Nhấn
+																	nút bên dưới để tạo thẻ thư viện mới.
+																</Typography>
+																<Button
+																	variant="contained"
+																	color="primary"
+																	startIcon={<LibraryAddIcon/>}
+																	onClick={handleOpenCreateCardModal}
+																>
+																	Tạo thẻ thư viện
+																</Button>
+															</div>
+														</CardContent>
+													</Card>
+												</div>
+											) : (
+												<div>
+													<Card className="mb-4">
+														<CardContent>
+															<Typography variant="h5" component="div"
+																		className="mb-3 d-flex align-items-center">
+																<CreditCardIcon
+																	style={{marginRight: '10px', color: '#1976d2'}}/>
+																Thông tin thẻ thư viện
+															</Typography>
+															<Grid container spacing={2}>
+																<Grid item xs={12} md={6}>
+																	<Typography variant="body1" className="mb-2">
+																		<strong>Mã
+																			thẻ:</strong> {libraryCard.cardNumber}
+																	</Typography>
+																	<Typography variant="body1" className="mb-2">
+																		<strong>Ngày
+																			cấp:</strong> {formatDate(libraryCard.issuedDate)}
+																	</Typography>
+																</Grid>
+																<Grid item xs={12} md={6}>
+																	<Typography variant="body1" className="mb-2">
+																		<strong>Ngày hết
+																			hạn:</strong> {formatDate(libraryCard.expiryDate)}
+																	</Typography>
+																	<Typography variant="body1" className="mb-2">
+																		<strong>Trạng thái:</strong> {" "}
+																		<span
+																			className={`badge ${libraryCard.activated === true ? 'bg-success' : 'bg-danger'}`}>
+																		{libraryCard.activated === true ? 'Hoạt động' : 'Không hoạt động'}
+																	</span>
+																	</Typography>
+																</Grid>
+															</Grid>
+															{libraryCard.activated !== true && (
+																<Alert severity="warning" className="mt-3">
+																	Thẻ của bạn hiện đang không hoạt động. Vui lòng liên
+																	hệ thủ thư để được hỗ trợ.
+																</Alert>
+															)}
+
+															{/* Nút gia hạn thẻ */}
+															<div className="mt-3 d-flex justify-content-end">
+																<Button
+																	variant="contained"
+																	color="primary"
+																	startIcon={<HourglassEmptyIcon/>}
+																	onClick={handleOpenRenewCardModal}
+																	disabled={libraryCard.activated !== true}
+																>
+																	Gia hạn thẻ
+																</Button>
+															</div>
+														</CardContent>
+													</Card>
+
+													{/* Section hiển thị lịch sử mượn sách */}
+													<Card>
+														<CardContent>
+															<Typography variant="h6" component="div"
+																		className="mb-3 d-flex align-items-center">
+																<LibraryBooksIcon
+																	style={{marginRight: '10px', color: '#1976d2'}}/>
+																Lịch sử mượn sách
+															</Typography>
+															<Typography variant="body2" color="text.secondary">
+																Chức năng hiển thị lịch sử mượn sách sẽ được cập nhật
+																trong thời gian tới.
+															</Typography>
+														</CardContent>
+													</Card>
+												</div>
+											)}
+										</>
+									)}
+
+									{/* Modal xác nhận tạo thẻ thư viện */}
+									<FadeModal
+										open={openCreateCardModal}
+										handleOpen={handleOpenCreateCardModal}
+										handleClose={handleCloseCreateCardModal}
+									>
+										<div className="p-4">
+											<Typography variant="h5" component="div" className="text-center mb-4">
+												<LibraryAddIcon style={{fontSize: 40, color: '#1976d2', marginRight: '10px'}}/>
+												Tạo thẻ thư viện
+											</Typography>
+
+											<TextField
+												fullWidth
+												label="Mã căn cước công dân"
+												variant="outlined"
+												value={newCardNumber}
+												onChange={(e) => {
+													const value = e.target.value;
+													// Only allow numbers
+													if (/^\d*$/.test(value)) {
+														setNewCardNumber(value);
+														setCardNumberError("");
+													}
+												}}
+												onBlur={() => {
+													// Validate card number on blur
+													if (!newCardNumber) {
+														setCardNumberError("Vui lòng nhập mã căn cước công dân");
+													} else if (newCardNumber.length < 10) {
+														setCardNumberError("Vui lòng nhập mã căn cước công dân hợp lệ");
+													} else {
+														setCardNumberError("");
+													}
+												}}
+												error={!!cardNumberError}
+												helperText={cardNumberError || "Nhập mã căn cước công dân"}
+												className="mb-4"
+											/>
+
+											<Typography variant="body2" color="text.secondary" paragraph>
+												Thẻ thư viện sẽ có hiệu lực trong 1 năm kể từ ngày tạo.
+											</Typography>
+
+											<div className="d-flex justify-content-center mt-4">
+												<Button
+													variant="outlined"
+													color="error"
+													onClick={() => {
+														setNewCardNumber("");
+														setCardNumberError("");
+														handleCloseCreateCardModal();
+													}}
+													className="me-3"
+												>
+													Hủy
+												</Button>
+												<Button
+													variant="contained"
+													color="primary"
+													onClick={handleCreateLibraryCard}
+													disabled={!newCardNumber || !!cardNumberError}
+												>
+													Xác nhận
+												</Button>
+											</div>
+										</div>
+									</FadeModal>
+
+									{/* Modal xác nhận gia hạn thẻ thư viện */}
+									<FadeModal
+										open={openRenewCardModal}
+										handleOpen={handleOpenRenewCardModal}
+										handleClose={handleCloseRenewCardModal}
+									>
+										<div className="p-4 text-center">
+											<HourglassEmptyIcon
+												style={{fontSize: 60, color: '#1976d2', marginBottom: '1rem'}}/>
+											<Typography variant="h5" component="div" gutterBottom>
+												Xác nhận gia hạn thẻ thư viện
+											</Typography>
+											<Typography variant="body1" paragraph>
+												Bạn có chắc chắn muốn gia hạn thẻ thư viện không?
+											</Typography>
+											<Typography variant="body2" color="text.secondary" paragraph>
+												Thẻ thư viện sẽ được gia hạn thêm 1 năm kể từ ngày hiện tại.
+											</Typography>
+											<div className="d-flex justify-content-center mt-4">
+												<Button
+													variant="outlined"
+													color="error"
+													onClick={handleCloseRenewCardModal}
+													className="me-3"
+												>
+													Hủy
+												</Button>
+												<Button
+													variant="contained"
+													color="primary"
+													onClick={() => {
+														handleRenewLibraryCard();
+														handleCloseRenewCardModal();
+													}}
+												>
+													Xác nhận
+												</Button>
+											</div>
+										</div>
+									</FadeModal>
+								</TabPanel>
+
+								{/* Tab Đổi mật khẩu */}
 								<TabPanel value='3'>
 									<form
 										onSubmit={handleSubmitChangePassword}
 										className='form position-relative'
-										style={{ padding: "0 120px" }}
+										style={{padding: "0 120px"}}
 									>
 										<TextField
 											error={
@@ -629,7 +1044,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 												fullWidth
 												variant='outlined'
 												type='submit'
-												sx={{ width: "50%", padding: "10px" }}
+												sx={{width: "50%", padding: "10px"}}
 											>
 												Lưu và thay đổi
 											</Button>
@@ -642,7 +1057,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 				</Grid>
 			</Grid>
 		</div>
-	);
-};
+	)
+}
 
 export default ProfilePage;

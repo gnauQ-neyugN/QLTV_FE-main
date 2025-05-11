@@ -1,7 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable @typescript-eslint/no-redeclare */
-/* eslint-disable jsx-a11y/anchor-is-valid */
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import BookModel from "../../../model/BookModel";
 import { Link, useNavigate } from "react-router-dom";
 import Tooltip from "@mui/material/Tooltip";
@@ -12,6 +9,7 @@ import { IconButton } from "@mui/material";
 import { endpointBE } from "../../utils/Constant";
 import { getIdUserByToken, isToken } from "../../utils/JwtService";
 import { useCartItem } from "../../utils/CartItemContext";
+import { useBorrowCart } from "../../utils/BorrowCartContext";
 import LibraryAddIcon from "@mui/icons-material/LibraryAdd";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
@@ -21,66 +19,54 @@ interface BookProps {
 
 const BookProps: React.FC<BookProps> = ({ book }) => {
 	const { setTotalCart, cartList } = useCartItem();
+	const { borrowCartList, setBorrowCartList, setTotalBorrowItems } = useBorrowCart();
 	const [isFavoriteBook, setIsFavoriteBook] = useState(false);
 	const navigation = useNavigate();
 	const [isAddingToLoan, setIsAddingToLoan] = useState(false);
 
-	// Lấy tất cả sách yêu thích của người dùng đã đăng nhập ra
-	useEffect(() => {
-		if (isToken()) {
-			fetch(
-				endpointBE +
-					`/favorite-book/get-favorite-book/${getIdUserByToken()}`
-			)
-				.then((response) => response.json())
-				.then((data) => {
-					if (data.includes(book.idBook)) {
-						setIsFavoriteBook(true);
-					}
-				})
-				.catch((error) => {
-					console.log(error);
-				});
+	// Handle adding book to borrow cart
+	const handleAddToBorrowCart = (newBook: BookModel) => {
+		if (!isToken()) {
+			toast.info("Bạn phải đăng nhập để sử dụng chức năng này");
+			navigation("/login");
+			return;
 		}
-	}, []);
 
-	const handleAddToLoan = async (newBook: BookModel) => {
-		// if (!isToken()) {
-		// 	toast.info("Bạn phải đăng nhập để sử dụng chức năng này");
-		// 	navigation("/login");
-		// 	return;
-		// }
-		// setIsAddingToLoan(true);
-		// // Gọi API backend để thêm sách vào phiếu mượn (chưa có API endpoint)
-		// try {
-		// 	const token = localStorage.getItem("token");
-		// 	const response = await fetch(endpointBE + `/loan-slip/add-book`, { // Thay đổi endpoint này
-		// 		method: "POST",
-		// 		headers: {
-		// 			Authorization: `Bearer ${token}`,
-		// 			"content-type": "application/json",
-		// 		},
-		// 		body: JSON.stringify({
-		// 			idBook: newBook.idBook,
-		// 			idUser: getIdUserByToken(),
-		// 			quantity: 1, // Hoặc số lượng bạn muốn mượn
-		// 		}),
-		// 	});
-		//
-		// 	if (response.ok) {
-		// 		toast.success(`Đã thêm "${newBook.nameBook}" vào phiếu mượn`);
-		// 		// Có thể thêm logic để cập nhật giao diện người dùng (ví dụ: disable nút này)
-		// 	} else {
-		// 		toast.error(`Không thể thêm "${newBook.nameBook}" vào phiếu mượn`);
-		// 	}
-		// } catch (error) {
-		// 	console.error("Lỗi khi thêm vào phiếu mượn:", error);
-		// 	toast.error(`Lỗi khi thêm "${newBook.nameBook}" vào phiếu mượn`);
-		// } finally {
-		// 	setIsAddingToLoan(false);
-		// }
+		setIsAddingToLoan(true);
+
+		// Check if book is already in borrow cart
+		let isExistBook = borrowCartList.find(
+			(cartItem) => cartItem.book.idBook === newBook.idBook
+		);
+
+		try {
+			// If book already exists in borrow cart, increase quantity
+			if (isExistBook) {
+				isExistBook.quantity += 1;
+			} else {
+				// Add new book to borrow cart
+				borrowCartList.push({
+					quantity: 1,
+					book: newBook
+				});
+			}
+
+			// Update local storage
+			localStorage.setItem("borrowCart", JSON.stringify(borrowCartList));
+			setTotalBorrowItems(borrowCartList.length);
+			setBorrowCartList([...borrowCartList]);
+
+			toast.success(`Đã thêm "${newBook.nameBook}" vào phiếu mượn`);
+
+		} catch (error) {
+			console.error("Lỗi khi thêm vào phiếu mượn:", error);
+			toast.error(`Lỗi khi thêm "${newBook.nameBook}" vào phiếu mượn`);
+		} finally {
+			setIsAddingToLoan(false);
+		}
 	};
-	// Xử lý thêm sản phẩm vào giỏ hàng
+
+	// Handle adding product to shopping cart
 	const handleAddProduct = async (newBook: BookModel) => {
 		// cái isExistBook này sẽ tham chiếu đến cái cart ở trên, nên khi update thì cart nó cũng update theo
 		let isExistBook = cartList.find(
@@ -205,8 +191,8 @@ const BookProps: React.FC<BookProps> = ({ book }) => {
 							<span className='badge bg-danger'>Hết hàng</span>
 						) : (
 							<span className='badge bg-primary'>
-								{book.discountPercent}%
-							</span>
+                                {book.discountPercent}%
+                            </span>
 						)}
 					</h4>
 				)}
@@ -225,31 +211,31 @@ const BookProps: React.FC<BookProps> = ({ book }) => {
 					>
 						<h5 className='card-title'>
 							<Tooltip title={book.nameBook} arrow>
-								<span>
-									<TextEllipsis text={book.nameBook + ""} limit={20} />
-								</span>
+                                <span>
+                                    <TextEllipsis text={book.nameBook + ""} limit={20} />
+                                </span>
 							</Tooltip>
 						</h5>
 					</Link>
 					<div className='price mb-3 d-flex align-items-center justify-content-between'>
 						<div className='d-flex align-items-center'>
-							<span className='discounted-price text-danger'>
-								<strong style={{ fontSize: "22px" }}>
-									{book.sellPrice?.toLocaleString()}đ
-								</strong>
-							</span>
+                            <span className='discounted-price text-danger'>
+                                <strong style={{ fontSize: "22px" }}>
+                                    {book.sellPrice?.toLocaleString()}đ
+                                </strong>
+                            </span>
 							{book.discountPercent !== 0 && (
 								<span className='original-price ms-3 small fw-bolder'>
-									<del>{book.listPrice?.toLocaleString()}đ</del>
-								</span>
+                                    <del>{book.listPrice?.toLocaleString()}đ</del>
+                                </span>
 							)}
 						</div>
 						<span
 							className='ms-2'
 							style={{ fontSize: "12px", color: "#aaa" }}
 						>
-							Đã bán {book.soldQuantity}
-						</span>
+                            Đã bán {book.soldQuantity}
+                        </span>
 					</div>
 					<div className='d-flex justify-content-between mt-2' role='group'>
 						<Tooltip title='Yêu thích'>
@@ -279,7 +265,7 @@ const BookProps: React.FC<BookProps> = ({ book }) => {
 								<IconButton
 									size='small'
 									color='info'
-									onClick={() => handleAddToLoan(book)}
+									onClick={() => handleAddToBorrowCart(book)}
 									disabled={isAddingToLoan}
 								>
 									<LibraryAddIcon />

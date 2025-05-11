@@ -30,7 +30,10 @@ import { AuthProvider } from "./layouts/utils/AuthContext";
 import { Error404Page } from "./layouts/pages/404Page";
 import { ForgotPassword } from "./layouts/user/ForgotPassword";
 import { CartItemProvider } from "./layouts/utils/CartItemContext";
+import { BorrowCartProvider } from "./layouts/utils/BorrowCartContext";
 import CheckoutStatus from "./layouts/pages/CheckoutStatus";
+import BorrowRecordsPage from "./layouts/pages/BorrowRecordsPage";
+import BorrowCartPage from "./layouts/pages/BorrowCartPage";
 
 const MyRoutes = () => {
 	const [reloadAvatar, setReloadAvatar] = useState(0);
@@ -45,93 +48,97 @@ const MyRoutes = () => {
 	return (
 		<AuthProvider>
 			<CartItemProvider>
-				<ConfirmProvider>
-					{/* Customer */}
-					{!isAdminPath && <Navbar key={reloadAvatar} />}
-					<Routes>
-						<Route path='/' element={<HomePage />} />
-						<Route path='/book/:idBook' element={<BookDetail />} />
-						<Route path='/about' element={<About />} />
-						<Route
-							path='/search/:idGenreParam'
-							element={<FilterPage />}
-						/>
-						<Route path='/search' element={<FilterPage />} />
-						<Route
-							path='/my-favorite-books'
-							element={<MyFavoriteBooksPage />}
-						/>
-						<Route path='/cart' element={<CartPage />} />
-						<Route path='/register' element={<RegisterPage />} />
-						<Route path='/login' element={<LoginPage />} />
-						<Route
-							path='/profile'
-							element={<ProfilePage setReloadAvatar={setReloadAvatar} />}
-						/>
-						<Route
-							path='/active/:email/:activationCode'
-							element={<ActiveAccount />}
-						/>
-						<Route path='/forgot-password' element={<ForgotPassword />} />
-						<Route path='/policy' element={<PolicyPage />} />
-						<Route path='/feedback' element={<FeedbackCustomerPage />} />
-						<Route path='/error-403' element={<Error403Page />} />
-						<Route
-							path='/check-out/status'
-							element={<CheckoutStatus />}
-						/>
-						{!isAdminPath && (
-							<Route path='*' element={<Error404Page />} />
-						)}
-					</Routes>
-					{!isAdminPath && <Footer />}
+				<BorrowCartProvider>
+					<ConfirmProvider>
+						{/* Customer */}
+						{!isAdminPath && <Navbar key={reloadAvatar} />}
+						<Routes>
+							<Route path='/' element={<HomePage />} />
+							<Route path='/book/:idBook' element={<BookDetail />} />
+							<Route path='/about' element={<About />} />
+							<Route
+								path='/search/:idGenreParam'
+								element={<FilterPage />}
+							/>
+							<Route path='/search' element={<FilterPage />} />
+							<Route
+								path='/my-favorite-books'
+								element={<MyFavoriteBooksPage />}
+							/>
+							<Route path='/cart' element={<CartPage />} />
+							<Route path='/borrow-cart' element={<BorrowCartPage />} />
+							<Route path='/borrow-records' element={<BorrowRecordsPage />} />
+							<Route path='/register' element={<RegisterPage />} />
+							<Route path='/login' element={<LoginPage />} />
+							<Route
+								path='/profile'
+								element={<ProfilePage setReloadAvatar={setReloadAvatar} />}
+							/>
+							<Route
+								path='/active/:email/:activationCode'
+								element={<ActiveAccount />}
+							/>
+							<Route path='/forgot-password' element={<ForgotPassword />} />
+							<Route path='/policy' element={<PolicyPage />} />
+							<Route path='/feedback' element={<FeedbackCustomerPage />} />
+							<Route path='/error-403' element={<Error403Page />} />
+							<Route
+								path='/check-out/status'
+								element={<CheckoutStatus />}
+							/>
+							{!isAdminPath && (
+								<Route path='*' element={<Error404Page />} />
+							)}
+						</Routes>
+						{!isAdminPath && <Footer />}
 
-					{/* Admin */}
-					{isAdminPath && (
-						<div className='row overflow-hidden w-100'>
-							<div className='col-2 col-md-3 col-lg-2'>
-								<Slidebar />
+						{/* Admin */}
+						{isAdminPath && (
+							<div className='row overflow-hidden w-100'>
+								<div className='col-2 col-md-3 col-lg-2'>
+									<Slidebar />
+								</div>
+								<div className='col-10 col-md-9 col-lg-10'>
+									<Routes>
+										<Route path='/admin' element={<DashboardPage />} />
+										<Route
+											path='/admin/dashboard'
+											element={<DashboardPage />}
+										/>
+										<Route
+											path='/admin/book'
+											element={<BookManagementPage />}
+										/>
+										<Route
+											path='/admin/user'
+											element={<UserManagementPage />}
+										/>
+										<Route
+											path='/admin/genre'
+											element={<GenreManagementPage />}
+										/>
+										<Route
+											path='/admin/order'
+											element={<OrderManagementPage />}
+										/>
+										<Route
+											path='/admin/feedback'
+											element={<FeedbackPage />}
+										/>
+										{isAdminPath && (
+											<Route path='*' element={<Error404Page />} />
+										)}
+									</Routes>
+								</div>
 							</div>
-							<div className='col-10 col-md-9 col-lg-10'>
-								<Routes>
-									<Route path='/admin' element={<DashboardPage />} />
-									<Route
-										path='/admin/dashboard'
-										element={<DashboardPage />}
-									/>
-									<Route
-										path='/admin/book'
-										element={<BookManagementPage />}
-									/>
-									<Route
-										path='/admin/user'
-										element={<UserManagementPage />}
-									/>
-									<Route
-										path='/admin/genre'
-										element={<GenreManagementPage />}
-									/>
-									<Route
-										path='/admin/order'
-										element={<OrderManagementPage />}
-									/>
-									<Route
-										path='/admin/feedback'
-										element={<FeedbackPage />}
-									/>
-									{isAdminPath && (
-										<Route path='*' element={<Error404Page />} />
-									)}
-								</Routes>
-							</div>
-						</div>
-					)}
-					<ToastContainer
-						position='bottom-center'
-						autoClose={3000}
-						pauseOnFocusLoss={false}
-					/>
-				</ConfirmProvider>
+						)}
+						<ToastContainer
+							position='bottom-center'
+							autoClose={3000}
+							pauseOnFocusLoss={false}
+						/>
+					</ConfirmProvider>
+				</BorrowCartProvider>
 			</CartItemProvider>
 		</AuthProvider>
 	);
