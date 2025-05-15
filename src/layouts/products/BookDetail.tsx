@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getBookById } from "../../api/BookApi";

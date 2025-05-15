@@ -34,6 +34,7 @@ import { BorrowCartProvider } from "./layouts/utils/BorrowCartContext";
 import CheckoutStatus from "./layouts/pages/CheckoutStatus";
 import BorrowRecordsPage from "./layouts/pages/BorrowRecordsPage";
 import BorrowCartPage from "./layouts/pages/BorrowCartPage";
+import BorrowRecordManagementPage from "./admin/BorrowRecordManagement";
 
 const MyRoutes = () => {
 	const [reloadAvatar, setReloadAvatar] = useState(0);
@@ -124,6 +125,9 @@ const MyRoutes = () => {
 										<Route
 											path='/admin/feedback'
 											element={<FeedbackPage />}
+										/>
+										<Route path='/admin/borrow'
+											   element={<BorrowRecordManagementPage />}
 										/>
 										{isAdminPath && (
 											<Route path='*' element={<Error404Page />} />
