@@ -51,6 +51,7 @@ interface LibraryCardInfo {
 	issuedDate: string;
 	expiryDate: string;
 	activated: boolean;
+	status: string;
 	// Các thông tin khác nếu cần
 }
 
@@ -242,9 +243,10 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 	// Hàm gia hạn thẻ thư viện
 	const handleRenewLibraryCard = () => {
 		const token = localStorage.getItem("token");
+		console.log("Sending renewal request for card ID:", libraryCard?.idLibraryCard);
 
 		toast.promise(
-			fetch(`${endpointBE}/library-card/renew`, {
+			fetch(`${endpointBE}/library-card/sendRequestRenewCard`, {
 				method: "PUT",
 				headers: {
 					Authorization: `Bearer ${token}`,
@@ -255,19 +257,44 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 				}),
 			})
 				.then(response => {
+					console.log("Response status:", response.status);
 					if (response.ok) {
-						return response.json();
+						return response.text().then(text => {
+							try {
+								// Try to parse as JSON if possible
+								return text ? JSON.parse(text) : {};
+							} catch (e) {
+								// If not JSON, create a simple object with status property
+								console.log("Response not JSON, using default");
+								return { status: "Yêu cầu gia hạn thẻ thư viện" };
+							}
+						});
 					}
-					throw new Error("Không thể gia hạn thẻ thư viện");
+					throw new Error("Không thể gửi yêu cầu gia hạn thẻ thư viện");
 				})
 				.then(data => {
-					setLibraryCard(data);
-					return "Gia hạn thẻ thư viện thành công";
+					console.log("Processed data:", data);
+
+					// Make sure we're not setting null values
+					if (libraryCard) {
+						// Create a new object with all existing properties plus updated status
+						const updatedCard = {
+							...libraryCard,
+							status: data.status || "Yêu cầu gia hạn thẻ thư viện"
+						};
+						setLibraryCard(updatedCard);
+					}
+
+					return "Gửi yêu cầu gia hạn thẻ thư viện thành công";
+				})
+				.catch(error => {
+					console.error("Error details:", error);
+					throw error;
 				}),
 			{
-				pending: "Đang gia hạn thẻ thư viện...",
-				success: "Gia hạn thẻ thư viện thành công!",
-				error: "Không thể gia hạn thẻ thư viện. Vui lòng thử lại."
+				pending: "Đang gửi yêu cầu gia hạn thẻ thư viện...",
+				success: "Gửi yêu cầu gia hạn thẻ thư viện thành công!",
+				error: "Không thể gửi yêu cầu gia hạn thẻ thư viện. Vui lòng thử lại."
 			}
 		);
 	};
@@ -820,6 +847,12 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 																		<strong>Ngày
 																			cấp:</strong> {formatDate(libraryCard.issuedDate)}
 																	</Typography>
+																	<Typography variant="body1" className="mb-2">
+																		<strong>Yêu cầu gia hạn thẻ:</strong> {" "}
+																		<span>
+																		{libraryCard.status==="Yêu cầu gia hạn thẻ thư viện"?"Thành công":"Không có"}
+																	</span>
+																	</Typography>
 																</Grid>
 																<Grid item xs={12} md={6}>
 																	<Typography variant="body1" className="mb-2">
@@ -851,7 +884,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 																	onClick={handleOpenRenewCardModal}
 																	disabled={libraryCard.activated !== true}
 																>
-																	Gia hạn thẻ
+																	Gửi yêu cầu gia hạn thẻ
 																</Button>
 															</div>
 														</CardContent>
@@ -956,13 +989,10 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 											<HourglassEmptyIcon
 												style={{fontSize: 60, color: '#1976d2', marginBottom: '1rem'}}/>
 											<Typography variant="h5" component="div" gutterBottom>
-												Xác nhận gia hạn thẻ thư viện
+												Xác nhận gửi yêu cầu gia hạn thẻ thư viện
 											</Typography>
 											<Typography variant="body1" paragraph>
-												Bạn có chắc chắn muốn gia hạn thẻ thư viện không?
-											</Typography>
-											<Typography variant="body2" color="text.secondary" paragraph>
-												Thẻ thư viện sẽ được gia hạn thêm 1 năm kể từ ngày hiện tại.
+												Bạn có chắc chắn muốn gửi yêu cầu gia hạn thẻ thư viện không?
 											</Typography>
 											<div className="d-flex justify-content-center mt-4">
 												<Button

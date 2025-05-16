@@ -3,17 +3,20 @@ class LibraryCardModel {
     cardNumber?: string;
     activated: boolean;
     issuedDate?: Date;
+    status?: string;
 
     constructor(
         idLibraryCard: number,
         activated: boolean,
         cardNumber?: string,
-        issuedDate?: Date
+        issuedDate?: Date,
+        status?: string
     ) {
         this.idLibraryCard = idLibraryCard;
         this.activated = activated;
         this.cardNumber = cardNumber;
         this.issuedDate = issuedDate;
+        this.status = status;
     }
 }
 

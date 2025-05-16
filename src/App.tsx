@@ -35,6 +35,9 @@ import CheckoutStatus from "./layouts/pages/CheckoutStatus";
 import BorrowRecordsPage from "./layouts/pages/BorrowRecordsPage";
 import BorrowCartPage from "./layouts/pages/BorrowCartPage";
 import BorrowRecordManagementPage from "./admin/BorrowRecordManagement";
+// Import new library card management components
+import LibraryCardManagementPage from "./admin/LibraryCardManagement";
+import LibraryViolationTypeManagementPage from "./admin/LibraryCardViolationTypeManagement";
 
 const MyRoutes = () => {
 	const [reloadAvatar, setReloadAvatar] = useState(0);
@@ -126,8 +129,18 @@ const MyRoutes = () => {
 											path='/admin/feedback'
 											element={<FeedbackPage />}
 										/>
-										<Route path='/admin/borrow'
-											   element={<BorrowRecordManagementPage />}
+										<Route
+											path='/admin/borrow'
+											element={<BorrowRecordManagementPage />}
+										/>
+										{/* Add new routes for library card management */}
+										<Route
+											path='/admin/library-card'
+											element={<LibraryCardManagementPage />}
+										/>
+										<Route
+											path='/admin/violation-types'
+											element={<LibraryViolationTypeManagementPage />}
 										/>
 										{isAdminPath && (
 											<Route path='*' element={<Error404Page />} />
