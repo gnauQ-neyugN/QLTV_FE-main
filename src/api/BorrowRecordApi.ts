@@ -169,25 +169,34 @@ class BorrowRecordApi {
      */
     public async fetchAllBorrowRecords(): Promise<BorrowRecord[]> {
         try {
-            const response = await fetch(`${API_BASE_URL}/borrow-records`, {
-                headers: this.getHeaders()
-            });
+            let allRecords: any[] = [];
+            let nextUrl = `${API_BASE_URL}/borrow-records?size=100&sort=id,desc`; // size lớn hơn 20
 
-            if (!response.ok) {
-                throw new Error("Failed to fetch borrow records");
+            // Duyệt qua tất cả các trang
+            while (nextUrl) {
+                const response = await fetch(nextUrl, {
+                    headers: this.getHeaders()
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to fetch borrow records");
+                }
+
+                const data = await response.json();
+                const records = data._embedded?.borrowRecords || [];
+                allRecords = allRecords.concat(records);
+
+                // Lấy URL của trang tiếp theo nếu có
+                nextUrl = data._links?.next?.href || null;
             }
 
-            const responseData = await response.json();
-            const borrowRecords = responseData._embedded?.borrowRecords || [];
-
-            // Process the borrow records and include user info and library card info
+            // Xử lý các bản ghi đã gom lại
             const processedRecords = await Promise.all(
-                borrowRecords.map(async (record: any) => {
+                allRecords.map(async (record: any) => {
                     let userName = "Unknown";
                     let cardNumber = "Unknown";
 
                     try {
-                        // Get library card info
                         const libraryCardData = await this.fetchLinkedResource(record._links.libraryCard.href);
                         cardNumber = libraryCardData.cardNumber || "Unknown";
                         userName = libraryCardData._embedded.user.username || "Unknown";
@@ -214,6 +223,7 @@ class BorrowRecordApi {
             throw error;
         }
     }
+
 
     /**
      * Fetch a specific borrow record by ID
