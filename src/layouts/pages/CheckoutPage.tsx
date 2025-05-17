@@ -68,14 +68,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = (props) => {
 		event.preventDefault();
 		const token = localStorage.getItem("token");
 
-		const booksRequest: any[] = [];
-
-		props.cartList.forEach((cartItem) => {
-			booksRequest.push({
-				book: cartItem.book,
-				quantity: cartItem.quantity,
-			});
-		});
+		const booksRequest = props.cartList.map((cartItem) => ({
+			book: cartItem.book,
+			quantity: cartItem.quantity,
+		}));
 
 		const request = {
 			idUser: getIdUserByToken(),
@@ -89,13 +85,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = (props) => {
 			note,
 		};
 
-		// Khi thanh toán bằng vnpay
+		// Nếu thanh toán VNPAY
 		if (payment === 2) {
 			try {
+				// Lưu đơn hàng trước
+				const savedOrder = await handleSaveOrder(request, true);
+				if (!savedOrder) return;
+
 				const response = await fetch(
-					endpointBE +
-						"/vnpay/create-payment?amount=" +
-						props.totalPriceProduct,
+					`${endpointBE}/vnpay/create-payment?amount=${props.totalPriceProduct}`,
 					{
 						method: "POST",
 						headers: {
@@ -104,50 +102,67 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = (props) => {
 						},
 					}
 				);
+
 				if (!response.ok) {
 					throw new Error(`HTTP error! Status: ${response.status}`);
 				}
+
 				const paymentUrl = await response.text();
-
-				// Lưu order vào csdl
-				const isPayNow = true;
-				handleSaveOrder(request, isPayNow);
-
 				window.location.replace(paymentUrl);
 			} catch (error) {
 				console.log(error);
+				toast.error("Không thể tạo thanh toán VNPAY");
 			}
 		} else {
-			// Khi nhận hàng mới thanh toán
-			handleSaveOrder(request);
+			// Thanh toán khi nhận hàng
+			await handleSaveOrder(request);
 		}
 	}
 
-	const handleSaveOrder = (request: any, isPayNow?: boolean) => {
+
+	const handleSaveOrder = async (request: any, isPayNow?: boolean) => {
 		const token = localStorage.getItem("token");
-		fetch(endpointBE + "/order/add-order", {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${token}`,
-				"content-type": "application/json",
-			},
-			body: JSON.stringify(request),
-		})
-			.then((response) => {
-				localStorage.removeItem("cart");
-				if (!isPayNow) {
-					setIsSuccessPayment(true);
-				}
-				if (!props.isBuyNow) {
-					setCartList([]);
-					setTotalCart(0);
-				}
-				toast.success("Thanh toán thành công");
-			})
-			.catch((error) => {
-				console.log(error);
-				toast.error("Thanh toán thất bại");
+
+		try {
+			const response = await fetch(endpointBE + "/order/add-order", {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"content-type": "application/json",
+				},
+				body: JSON.stringify(request),
 			});
+
+			const contentType = response.headers.get("content-type");
+			let responseData;
+
+			if (contentType && contentType.includes("application/json")) {
+				responseData = await response.json();
+			} else {
+				responseData = await response.text();
+			}
+
+			if (!response.ok) {
+				console.error("❌ Lỗi khi gọi API /order/add-order", responseData);
+				throw new Error("Lỗi khi lưu đơn hàng");
+			}
+
+			if (!isPayNow) {
+				setIsSuccessPayment(true);
+				toast.success("Đặt hàng thành công");
+			}
+
+			if (!props.isBuyNow) {
+				setCartList([]);
+				setTotalCart(0);
+				localStorage.removeItem("cart");
+			}
+
+			return responseData;
+		} catch (error) {
+			console.error("❌ Lỗi trong handleSaveOrder:", error);
+			toast.error("Lưu đơn hàng thất bại");
+		}
 	};
 
 	return (

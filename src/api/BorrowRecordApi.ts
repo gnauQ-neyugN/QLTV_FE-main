@@ -198,7 +198,7 @@ class BorrowRecordApi {
 
                     try {
                         const libraryCardData = await this.fetchLinkedResource(record._links.libraryCard.href);
-                        cardNumber = libraryCardData.cardNumber || "Unknown";
+                        cardNumber = libraryCardData.cardNumber || "";
                         userName = libraryCardData._embedded.user.username || "Unknown";
                     } catch (error) {
                         console.error("Error fetching related info:", error);
@@ -247,7 +247,7 @@ class BorrowRecordApi {
 
             try {
                 const libraryCardData = await this.fetchLinkedResource(borrowRecordData._links.libraryCard.href);
-                cardNumber = libraryCardData.cardNumber || "Unknown";
+                cardNumber = libraryCardData.cardNumber || "";
                 libraryCardId = libraryCardData.idLibraryCard || 0;
                 userName = libraryCardData._embedded.user.username;
             } catch (error) {

@@ -145,7 +145,7 @@ const LibraryCardManagement = () => {
                         return {
                             id: card.idLibraryCard,
                             idLibraryCard: card.idLibraryCard,
-                            cardNumber: card.cardNumber || "N/A",
+                            cardNumber: card.cardNumber || "",
                             userName,
                             userId,
                             issuedDate: card.issuedDate,
@@ -157,8 +157,11 @@ const LibraryCardManagement = () => {
                     })
                 );
 
-                setCards(processedCards);
-                applyFilters(processedCards, searchQuery, tabValue === 0 ? statusFilter : "all");
+                // Lọc chỉ lấy những thẻ có cardNumber (không null và không rỗng)
+                const filteredCards = processedCards.filter(card => card.cardNumber && card.cardNumber !== "" && card.cardNumber !== "N/A");
+
+                setCards(filteredCards);
+                applyFilters(filteredCards, searchQuery, tabValue === 0 ? statusFilter : "all");
             }
         } catch (error) {
             console.error("Error fetching library cards:", error);
@@ -405,6 +408,7 @@ const LibraryCardManagement = () => {
     const handleRenewalDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setRenewalDate(event.target.value);
     };
+
 
     // DataGrid columns
     const columns: GridColDef[] = [
