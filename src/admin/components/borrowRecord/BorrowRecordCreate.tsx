@@ -157,8 +157,8 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
             return;
         }
 
-        if (quantity > selectedBook.quantity!) {
-            toast.warning(`Chỉ còn ${selectedBook.quantity} quyển sách này trong kho`);
+        if (quantity > selectedBook.quantityForBorrow!) {
+            toast.warning(`Chỉ còn ${selectedBook.quantityForBorrow} quyển sách này trong kho`);
             return;
         }
 
@@ -170,8 +170,8 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
             const newCartItems = [...cartItems];
             const newQuantity = newCartItems[existingItemIndex].quantity + quantity;
 
-            if (newQuantity > selectedBook.quantity!) {
-                toast.warning(`Chỉ còn ${selectedBook.quantity} quyển sách này trong kho`);
+            if (newQuantity > selectedBook.quantityForBorrow!) {
+                toast.warning(`Chỉ còn ${selectedBook.quantityForBorrow} quyển sách này trong kho`);
                 return;
             }
 
@@ -378,7 +378,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                             <Box>
                                                 <Typography variant="body1">{option.nameBook}</Typography>
                                                 <Typography variant="body2" color="text.secondary">
-                                                    {option.author} - Còn lại: {option.quantity}
+                                                    {option.author} - Còn lại: {option.quantityForBorrow}
                                                 </Typography>
                                             </Box>
                                         </Box>
@@ -407,7 +407,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                 type="number"
                                 value={quantity}
                                 onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                                InputProps={{ inputProps: { min: 1, max: selectedBook?.quantity || 1 } }}
+                                InputProps={{ inputProps: { min: 1, max: selectedBook?.quantityForBorrow || 1 } }}
                                 sx={{ width: '100px' }}
                             />
 
@@ -439,7 +439,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                         Tác giả: {selectedBook.author}
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary">
-                                        Số lượng còn lại: {selectedBook.quantity}
+                                        Số lượng còn lại: {selectedBook.quantityForBorrow}
                                     </Typography>
                                 </Box>
                             </Box>

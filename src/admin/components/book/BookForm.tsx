@@ -27,7 +27,9 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 		description: "",
 		listPrice: NaN,
 		sellPrice: NaN,
-		quantity: NaN,
+		quantityForSold: NaN,
+		quantityForBorrow: NaN,
+		borrowQuantity:NaN,
 		avgRating: NaN,
 		soldQuantity: NaN,
 		discountPercent: 0,
@@ -117,7 +119,8 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 							description: "",
 							listPrice: NaN,
 							sellPrice: NaN,
-							quantity: NaN,
+							quantityForBorrow: NaN,
+							quantityForSold: NaN,
 							avgRating: NaN,
 							soldQuantity: NaN,
 							discountPercent: 0,
@@ -286,16 +289,16 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 								<TextField
 									required
 									id='filled-required'
-									label='Số lượng'
+									label='Số lượng để bán'
 									style={{ width: "100%" }}
 									type='number'
 									value={
-										Number.isNaN(book.quantity) ? "" : book.quantity
+										Number.isNaN(book.quantityForSold) ? "" : book.quantityForSold
 									}
 									onChange={(e: any) =>
 										setBook({
 											...book,
-											quantity: parseInt(e.target.value),
+											quantityForSold: parseInt(e.target.value),
 										})
 									}
 									size='small'

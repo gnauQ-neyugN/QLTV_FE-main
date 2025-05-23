@@ -95,6 +95,30 @@ class LibraryCardApi {
     }
 
     /**
+     * Create a new library card
+     */
+    public async createCard(cardId: number, userId: number, cardNumber: string): Promise<void> {
+        try {
+            const response = await fetch(`${endpointBE}/library-card/create`, {
+                method: "PUT",
+                headers: this.getHeaders(true),
+                body: JSON.stringify({
+                    idUser: userId,
+                    cardNumber: cardNumber
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Failed to create library card");
+            }
+        } catch (error) {
+            console.error("Error creating library card:", error);
+            throw error;
+        }
+    }
+
+    /**
      * Fetch all library cards
      */
     public async fetchAllLibraryCards(): Promise<LibraryCard[]> {
@@ -133,20 +157,20 @@ class LibraryCardApi {
                         }
 
                         // Check if card is expired
-                        const expiryDate = new Date(card.expiryDate);
-                        const isExpired = new Date() > expiryDate;
+                        const expiryDate = card.expiryDate ? new Date(card.expiryDate) : null;
+                        const isExpired = expiryDate ? new Date() > expiryDate : false;
                         const activated = isExpired ? false : card.activated;
 
                         return {
                             id: card.idLibraryCard,
                             idLibraryCard: card.idLibraryCard,
-                            cardNumber: card.cardNumber || "N/A",
+                            cardNumber: card.cardNumber || "",
                             userName,
                             userId,
                             issuedDate: card.issuedDate,
                             expiryDate: card.expiryDate,
                             activated,
-                            status: card.status,
+                            status: card.status || "",
                             violationCount
                         };
                     })
@@ -196,20 +220,20 @@ class LibraryCardApi {
             }
 
             // Check if card is expired
-            const expiryDate = new Date(card.expiryDate);
-            const isExpired = new Date() > expiryDate;
+            const expiryDate = card.expiryDate ? new Date(card.expiryDate) : null;
+            const isExpired = expiryDate ? new Date() > expiryDate : false;
             const activated = isExpired ? false : card.activated;
 
             return {
                 id: card.idLibraryCard,
                 idLibraryCard: card.idLibraryCard,
-                cardNumber: card.cardNumber || "N/A",
+                cardNumber: card.cardNumber || "",
                 userName,
                 userId,
                 issuedDate: card.issuedDate,
                 expiryDate: card.expiryDate,
                 activated,
-                status: card.status,
+                status: card.status || "",
                 violationCount
             };
         } catch (error) {

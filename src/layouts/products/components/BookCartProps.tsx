@@ -26,9 +26,9 @@ const BookCartProps: React.FC<BookCartProps> = (props) => {
 
 	// Tạo các biến
 	const [quantity, setQuantity] = useState(
-		props.cartItem.book.quantity !== undefined
-			? props.cartItem.quantity > props.cartItem.book.quantity
-				? props.cartItem.book.quantity
+		props.cartItem.book.quantityForSold !== undefined
+			? props.cartItem.quantity > props.cartItem.book.quantityForSold
+				? props.cartItem.book.quantityForSold
 				: props.cartItem.quantity
 			: props.cartItem.quantity
 	);
@@ -84,7 +84,7 @@ const BookCartProps: React.FC<BookCartProps> = (props) => {
 		if (quantity) {
 			if (
 				quantity <
-				(props.cartItem.book.quantity ? props.cartItem.book.quantity : 1)
+				(props.cartItem.book.quantityForSold ? props.cartItem.book.quantityForSold : 1)
 			) {
 				setQuantity(quantity + 1);
 				handleModifiedQuantity(props.cartItem.book.idBook, 1);
@@ -199,7 +199,7 @@ const BookCartProps: React.FC<BookCartProps> = (props) => {
 			</div>
 			<div className='col-3 text-center my-auto d-flex align-items-center justify-content-center'>
 				<SelectQuantity
-					max={props.cartItem.book.quantity}
+					max={props.cartItem.book.quantityForSold}
 					setQuantity={setQuantity}
 					quantity={quantity}
 					add={add}

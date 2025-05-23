@@ -405,8 +405,8 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                             variant="outlined"
                         />
                     </Box>
-
-                    <StepperComponent steps={steps} activeStep={activeStep} />
+    
+                    {/*<StepperComponent steps={steps} activeStep={activeStep} />*/}
                 </Box>
 
                 <Box sx={{ mb: 4 }}>

@@ -3,9 +3,14 @@ import {
     Box,
     Button,
     CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     Paper,
     Tab,
     Tabs,
+    TextField,
     Typography
 } from "@mui/material";
 import { toast } from "react-toastify";
@@ -13,6 +18,7 @@ import RequireAdmin from "./RequireAdmin";
 import LibraryCardApi, { LibraryCard } from "../api/LibraryCardApi";
 import LibraryCardTable from "./components/libarycard/LibraryCardTable";
 import LibraryCardForms from "./components/libarycard/LibraryCardForms";
+import LibraryAddIcon from "@mui/icons-material/LibraryAdd";
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -52,7 +58,12 @@ const LibraryCardManagement = () => {
     const [renewDialogOpen, setRenewDialogOpen] = useState(false);
     const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
     const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+    const [createCardDialogOpen, setCreateCardDialogOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
+
+    // Create card state
+    const [newCardNumber, setNewCardNumber] = useState("");
+    const [cardNumberError, setCardNumberError] = useState("");
 
     // Fetch library cards on component mount
     useEffect(() => {
@@ -92,6 +103,13 @@ const LibraryCardManagement = () => {
     const handleActivateDialogOpen = (card: LibraryCard) => {
         setSelectedCard(card);
         setActivateDialogOpen(true);
+    };
+
+    const handleCreateCardDialogOpen = (card: LibraryCard) => {
+        setSelectedCard(card);
+        setNewCardNumber("");
+        setCardNumberError("");
+        setCreateCardDialogOpen(true);
     };
 
     // Handlers for CRUD operations
@@ -150,6 +168,104 @@ const LibraryCardManagement = () => {
         }
     };
 
+    const handleCreateCard = async () => {
+        if (!selectedCard || !selectedCard.userId) return;
+
+        // Validate card number
+        if (!newCardNumber) {
+            setCardNumberError("Vui lòng nhập mã thẻ thư viện");
+            return;
+        }
+
+        if (newCardNumber.length < 8) {
+            setCardNumberError("Mã thẻ thư viện phải có ít nhất 8 ký tự");
+            return;
+        }
+
+        setProcessing(true);
+        try {
+            // Use LibraryCardApi method to create card
+            await LibraryCardApi.createCard(
+                selectedCard.idLibraryCard,
+                selectedCard.userId,
+                newCardNumber
+            );
+
+            toast.success("Tạo thẻ thư viện thành công");
+            setCreateCardDialogOpen(false);
+            fetchLibraryCards(); // Refresh data
+        } catch (error) {
+            console.error("Error creating library card:", error);
+            toast.error("Lỗi khi tạo thẻ thư viện");
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    // Render the Create Card Dialog
+    const renderCreateCardDialog = () => (
+        <Dialog
+            open={createCardDialogOpen}
+            onClose={() => setCreateCardDialogOpen(false)}
+            maxWidth="sm"
+            fullWidth
+        >
+            <DialogTitle>
+                <Box display="flex" alignItems="center">
+                    <LibraryAddIcon sx={{ mr: 1 }} />
+                    Tạo thẻ thư viện
+                </Box>
+            </DialogTitle>
+            <DialogContent>
+                <Box sx={{ my: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                        Thông tin người dùng:
+                    </Typography>
+                    <Typography variant="body1">
+                        <strong>Tên độc giả:</strong> {selectedCard?.userName}
+                    </Typography>
+                    <Typography variant="body1">
+                        <strong>ID người dùng:</strong> {selectedCard?.userId}
+                    </Typography>
+
+                    <TextField
+                        label="Mã thẻ thư viện"
+                        value={newCardNumber}
+                        onChange={(e) => {
+                            setNewCardNumber(e.target.value);
+                            if (e.target.value) {
+                                setCardNumberError("");
+                            }
+                        }}
+                        fullWidth
+                        required
+                        margin="normal"
+                        error={!!cardNumberError}
+                        helperText={cardNumberError || "Nhập mã thẻ thư viện (CCCD hoặc mã số định danh)"}
+                    />
+
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                        Thẻ thư viện sẽ được kích hoạt và có thời hạn 1 năm kể từ ngày tạo.
+                    </Typography>
+                </Box>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setCreateCardDialogOpen(false)} color="inherit">
+                    Hủy
+                </Button>
+                <Button
+                    onClick={handleCreateCard}
+                    color="primary"
+                    variant="contained"
+                    disabled={processing || !newCardNumber}
+                    startIcon={processing ? <CircularProgress size={20} /> : null}
+                >
+                    {processing ? "Đang xử lý..." : "Tạo thẻ"}
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+
     return (
         <div className="container p-5">
             <Paper elevation={3} className="p-4 mb-4">
@@ -183,6 +299,7 @@ const LibraryCardManagement = () => {
                                 onRenew={handleRenewDialogOpen}
                                 onDeactivate={handleDeactivateDialogOpen}
                                 onActivate={handleActivateDialogOpen}
+                                onCreateCard={handleCreateCardDialogOpen}
                                 tabValue={tabValue}
                             />
                         </TabPanel>
@@ -194,6 +311,7 @@ const LibraryCardManagement = () => {
                                 onRenew={handleRenewDialogOpen}
                                 onDeactivate={handleDeactivateDialogOpen}
                                 onActivate={handleActivateDialogOpen}
+                                onCreateCard={handleCreateCardDialogOpen}
                                 tabValue={tabValue}
                             />
                         </TabPanel>
@@ -205,6 +323,7 @@ const LibraryCardManagement = () => {
                                 onRenew={handleRenewDialogOpen}
                                 onDeactivate={handleDeactivateDialogOpen}
                                 onActivate={handleActivateDialogOpen}
+                                onCreateCard={handleCreateCardDialogOpen}
                                 tabValue={tabValue}
                             />
                         </TabPanel>
@@ -216,6 +335,7 @@ const LibraryCardManagement = () => {
                                 onRenew={handleRenewDialogOpen}
                                 onDeactivate={handleDeactivateDialogOpen}
                                 onActivate={handleActivateDialogOpen}
+                                onCreateCard={handleCreateCardDialogOpen}
                                 tabValue={tabValue}
                             />
                         </TabPanel>
@@ -247,6 +367,9 @@ const LibraryCardManagement = () => {
                 card={selectedCard}
                 loading={processing}
             />
+
+            {/* Create Card Dialog */}
+            {renderCreateCardDialog()}
         </div>
     );
 };

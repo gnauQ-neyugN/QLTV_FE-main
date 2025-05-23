@@ -187,7 +187,7 @@ const BookProps: React.FC<BookProps> = ({ book }) => {
 						className='my-0 d-inline-block position-absolute end-0'
 						style={{ top: "15px" }}
 					>
-						{book.quantity === 0 ? (
+						{book.quantityForSold === 0 ? (
 							<span className='badge bg-danger'>Hết hàng</span>
 						) : (
 							<span className='badge bg-primary'>
@@ -249,7 +249,7 @@ const BookProps: React.FC<BookProps> = ({ book }) => {
 								<FavoriteIcon />
 							</IconButton>
 						</Tooltip>
-						{book.quantity !== 0 && (
+						{book.quantityForSold !== 0 && (
 							<Tooltip title='Thêm vào giỏ hàng'>
 								<IconButton
 									size='small'
@@ -260,7 +260,7 @@ const BookProps: React.FC<BookProps> = ({ book }) => {
 								</IconButton>
 							</Tooltip>
 						)}
-						{book.quantity !== 0 && (
+						{book.quantityForBorrow !== 0 && (
 							<Tooltip title='Thêm vào phiếu mượn'>
 								<IconButton
 									size='small'

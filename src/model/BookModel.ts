@@ -9,7 +9,9 @@ class BookModel {
    description?: string;
    listPrice: number;
    sellPrice: number;
-   quantity?: number;
+   quantityForSold?: number;
+   quantityForBorrow?: number;
+   borrowQuantity?: number;
    avgRating?: number;
    soldQuantity?: number;
    discountPercent?: number;
@@ -19,7 +21,9 @@ class BookModel {
    genresList?: GenreModel[];
    isFavorited?: boolean;
 
-   constructor(idBook: number, nameBook: string, author: string, isbn: string, description: string, listPrice: number, sellPrice: number, quantity: number, avgRating: number, soldQuantity: number, discountPercent: number, thumbnail: string) {
+
+   constructor(id: any, idBook: number, nameBook: string, author: string, isbn: string, description: string, listPrice: number, sellPrice: number, quantityForSold: number, quantityForBorrow: number, borrowQuantity: number, avgRating: number, soldQuantity: number, discountPercent: number, thumbnail: string, relatedImg: string[], idGenres: number[], genresList: GenreModel[], isFavorited: boolean) {
+      this.id = id;
       this.idBook = idBook;
       this.nameBook = nameBook;
       this.author = author;
@@ -27,11 +31,17 @@ class BookModel {
       this.description = description;
       this.listPrice = listPrice;
       this.sellPrice = sellPrice;
-      this.quantity = quantity;
+      this.quantityForSold = quantityForSold;
+      this.quantityForBorrow = quantityForBorrow;
+      this.borrowQuantity = borrowQuantity;
       this.avgRating = avgRating;
       this.soldQuantity = soldQuantity;
       this.discountPercent = discountPercent;
       this.thumbnail = thumbnail;
+      this.relatedImg = relatedImg;
+      this.idGenres = idGenres;
+      this.genresList = genresList;
+      this.isFavorited = isFavorited;
    }
 }
 

@@ -85,7 +85,7 @@ const BookDetail: React.FC<BookDetailProps> = (props) => {
 	const [quantity, setQuantity] = useState(1);
 	// Xử lý tăng số lượng
 	const add = () => {
-		if (quantity < (book?.quantity ? book?.quantity : 1)) {
+		if (quantity < (book?.quantityForSold ? book?.quantityForSold : 1)) {
 			setQuantity(quantity + 1);
 		}
 	};
@@ -364,18 +364,18 @@ const BookDetail: React.FC<BookDetailProps> = (props) => {
 								<div className='d-flex align-items-center mt-3'>
 									<strong className='me-5'>Số lượng: </strong>
 									<SelectQuantity
-										max={book.quantity}
+										max={book.quantityForSold}
 										quantity={quantity}
 										setQuantity={setQuantity}
 										add={add}
 										reduce={reduce}
 									/>
 									<span className='ms-4'>
-										{book.quantity} sản phẩm có sẵn
+										{book.quantityForSold} sản phẩm có sẵn
 									</span>
 								</div>
 								<div className='mt-4 d-flex align-items-center'>
-									{book.quantity === 0 ? (
+									{book.quantityForSold === 0 ? (
 										<Button
 											variant='outlined'
 											size='large'
