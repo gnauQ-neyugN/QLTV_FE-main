@@ -1,7 +1,9 @@
 import { endpointBE } from '../layouts/utils/Constant';
 import BookModel from '../model/BookModel'
 import GenreModel from '../model/GenreModel';
+import DdcCategoryModel from '../model/DdcCategoryModel';
 import { getGenreByIdBook } from './GenreApi';
+import { getDdcCategoryByIdBook } from './DdcCategoryApi';
 import { getAllImageByBook } from './ImageApi';
 import { request, requestAdmin } from './Request';
 
@@ -26,14 +28,14 @@ async function getBook(endpoint: string): Promise<resultInterface> {
 
    // Lấy ra ảnh của từng quyển sách
    const bookList1 = await Promise.all(
-      bookList.map(async (book: BookModel) => {
-         const responseImg = await getAllImageByBook(book.idBook);
-         const thumbnail = responseImg.filter(image => image.thumbnail);
-         return {
-            ...book,
-            thumbnail: thumbnail[0].urlImage,
-         };
-      })
+       bookList.map(async (book: BookModel) => {
+          const responseImg = await getAllImageByBook(book.idBook);
+          const thumbnail = responseImg.filter(image => image.thumbnail);
+          return {
+             ...book,
+             thumbnail: thumbnail[0]?.urlImage || thumbnail[0]?.dataImage,
+          };
+       })
    );
 
    return { bookList: bookList1, totalPage: totalPage, size: size };
@@ -83,7 +85,6 @@ export async function get3BestSellerBooks(): Promise<BookModel[]> {
 
    return newBookList;
 }
-
 
 export async function searchBook(keySearch?: string, idGenre?: number, filter?: number, size?: number, page?: number): Promise<resultInterface> {
 
@@ -148,12 +149,13 @@ export async function getBookById(idBook: number): Promise<BookModel | null> {
       idBook: 0,
       nameBook: "",
       author: "",
+      isbn: "",
       description: "",
       listPrice: NaN,
       sellPrice: NaN,
       quantityForSold: NaN,
       quantityForBorrow: NaN,
-      borrowQuantity:NaN,
+      borrowQuantity: NaN,
       avgRating: NaN,
       soldQuantity: NaN,
       discountPercent: NaN,
@@ -172,7 +174,7 @@ export async function getBookById(idBook: number): Promise<BookModel | null> {
          const thumbnail = responseImg.filter(image => image.thumbnail);
          return {
             ...bookResponse,
-            thumbnail: thumbnail[0].urlImage,
+            thumbnail: thumbnail[0]?.urlImage || thumbnail[0]?.dataImage,
          };
       } else {
          throw new Error("Sách không tồn tại");
@@ -193,7 +195,6 @@ export async function getBookByIdCartItem(idCart: number): Promise<BookModel | n
 
       // Kiểm tra xem dữ liệu endpoint trả về có dữ liệu không
       if (response) {
-
          // Trả về quyển sách
          return response;
       } else {
@@ -222,25 +223,28 @@ export async function getTotalNumberOfBooks(): Promise<number> {
    return 0;
 }
 
-// Lấy sách theo id (lấy thumbnail, ảnh liên quan, thể loại)
+// Lấy sách theo id (lấy thumbnail, ảnh liên quan, thể loại, DDC categories)
 export async function getBookByIdAllInformation(idBook: number): Promise<BookModel | null> {
    let bookResponse: BookModel = {
       idBook: 0,
       nameBook: "",
       author: "",
+      isbn: "",
       description: "",
       listPrice: NaN,
       sellPrice: NaN,
       quantityForSold: NaN,
       quantityForBorrow: NaN,
-      borrowQuantity:NaN,
+      borrowQuantity: NaN,
       avgRating: NaN,
       soldQuantity: NaN,
       discountPercent: NaN,
       thumbnail: "",
       relatedImg: [],
       idGenres: [],
+      idDdcCategory: [],
       genresList: [],
+      ddcCategoryList: [],
    }
 
    try {
@@ -260,16 +264,36 @@ export async function getBookByIdAllInformation(idBook: number): Promise<BookMod
             return !image.thumbnail ? image.urlImage || image.dataImage : null;
          }).filter(Boolean); // Loại bỏ các giá trị null
 
-
-
-         bookResponse = { ...bookResponse, relatedImg: relatedImg as string[], thumbnail: thumbnail?.urlImage || thumbnail?.dataImage };
+         bookResponse = {
+            ...bookResponse,
+            relatedImg: relatedImg as string[],
+            thumbnail: thumbnail?.urlImage || thumbnail?.dataImage
+         };
 
          // Lấy tất cả thể loại của sách
          const genresList = await getGenreByIdBook(response.idBook);
          genresList.genreList.forEach((genre) => {
             const dataGenre: GenreModel = { idGenre: genre.idGenre, nameGenre: genre.nameGenre };
             bookResponse = { ...bookResponse, genresList: [...bookResponse.genresList || [], dataGenre] };
-         })
+         });
+
+         // Lấy tất cả DDC categories của sách
+         try {
+            const ddcCategoriesList = await getDdcCategoryByIdBook(response.idBook);
+            ddcCategoriesList.ddcCategoryList.forEach((ddcCategory) => {
+               const dataDdcCategory: DdcCategoryModel = {
+                  idDdcCategory: ddcCategory.idDdcCategory,
+                  nameCategory: ddcCategory.nameCategory
+               };
+               bookResponse = {
+                  ...bookResponse,
+                  ddcCategoryList: [...bookResponse.ddcCategoryList || [], dataDdcCategory]
+               };
+            });
+         } catch (error) {
+            console.log("DDC Categories not found or error:", error);
+            // DDC categories are optional, so continue without them
+         }
 
          return bookResponse;
       } else {
