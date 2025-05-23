@@ -6,7 +6,9 @@ import { Box, Button } from "@mui/material";
 import { CloudUpload } from "@mui/icons-material";
 import { toast } from "react-toastify";
 import GenreModel from "../../../model/GenreModel";
+import DdcCategoryModel from "../../../model/DdcCategoryModel";
 import { getAllGenres } from "../../../api/GenreApi";
+import { getAllDdcCategories } from "../../../api/DdcCategoryApi";
 import { SelectMultiple } from "../../../layouts/utils/SelectMultiple";
 import { LoadingButton } from "@mui/lab";
 import { getBookByIdAllInformation } from "../../../api/BookApi";
@@ -24,27 +26,32 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 		idBook: 0,
 		nameBook: "",
 		author: "",
+		isbn: "",
 		description: "",
 		listPrice: NaN,
 		sellPrice: NaN,
 		quantityForSold: NaN,
 		quantityForBorrow: NaN,
-		borrowQuantity:NaN,
+		borrowQuantity: NaN,
 		avgRating: NaN,
 		soldQuantity: NaN,
 		discountPercent: 0,
 		thumbnail: "",
 		relatedImg: [],
 		idGenres: [],
+		idDdcCategory: [],
 	});
 	const [genresList, setGenresList] = useState<GenreModel[]>([]);
+	const [ddcCategoriesList, setDdcCategoriesList] = useState<DdcCategoryModel[]>([]);
 	const [genresListSelected, setGenresListSelected] = useState<number[]>([]);
+	const [ddcCategoriesSelected, setDdcCategoriesSelected] = useState<number[]>([]);
 	const [previewThumbnail, setPreviewThumbnail] = useState("");
-	const [previewRelatedImages, setPreviewRelatedImages] = useState<string[]>(
-		[]
-	);
+	const [previewRelatedImages, setPreviewRelatedImages] = useState<string[]>([]);
+
 	// Giá trị khi đã chọn ở trong select multiple
-	const [SelectedListName, setSelectedListName] = useState<any[]>([]);
+	const [selectedGenresName, setSelectedGenresName] = useState<any[]>([]);
+	const [selectedDdcCategoriesName, setSelectedDdcCategoriesName] = useState<any[]>([]);
+
 	// Khi submit thì btn loading ...
 	const [statusBtn, setStatusBtn] = useState(false);
 	// Biến reload (cho selectMultiple)
@@ -57,8 +64,10 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 				setBook(response as BookModel);
 				setPreviewThumbnail(response?.thumbnail as string);
 				setPreviewRelatedImages(response?.relatedImg as string[]);
+
+				// Set genres
 				response?.genresList?.forEach((data) => {
-					setSelectedListName((prev) => [...prev, data.nameGenre]);
+					setSelectedGenresName((prev) => [...prev, data.nameGenre]);
 					setBook((prevBook) => {
 						return {
 							...prevBook,
@@ -66,21 +75,40 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 						};
 					});
 				});
+
+				// Set DDC categories
+				response?.ddcCategoryList?.forEach((data) => {
+					setSelectedDdcCategoriesName((prev) => [...prev, data.nameCategory]);
+					setBook((prevBook) => {
+						return {
+							...prevBook,
+							idDdcCategory: [...(prevBook.idDdcCategory || []), data.idDdcCategory],
+						};
+					});
+				});
 			});
 		}
 	}, [props.option, props.id]);
 
-	// Khúc này lấy ra tất cả thể loại để cho vào select
+	// Lấy ra tất cả thể loại và DDC categories
 	useEffect(() => {
 		getAllGenres().then((response) => {
 			setGenresList(response.genreList);
 		});
+
+		getAllDdcCategories().then((response) => {
+			setDdcCategoriesList(response.ddcCategoryList);
+		});
 	}, [props.option]);
 
-	// Khúc này để lưu danh sách thể loại của sách
+	// Lưu danh sách thể loại và DDC categories của sách
 	useEffect(() => {
 		setBook({ ...book, idGenres: genresListSelected });
 	}, [genresListSelected]);
+
+	useEffect(() => {
+		setBook({ ...book, idDdcCategory: ddcCategoriesSelected });
+	}, [ddcCategoriesSelected]);
 
 	async function hanleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -92,8 +120,6 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 			bookRequest = { ...book, sellPrice: book.listPrice };
 		}
 
-		// console.log(book);
-
 		setStatusBtn(true);
 
 		const endpoint =
@@ -101,6 +127,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 				? endpointBE + "/book/add-book"
 				: endpointBE + "/book/update-book";
 		const method = props.option === "add" ? "POST" : "PUT";
+
 		toast.promise(
 			fetch(endpoint, {
 				method: method,
@@ -116,6 +143,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 							idBook: 0,
 							nameBook: "",
 							author: "",
+							isbn: "",
 							description: "",
 							listPrice: NaN,
 							sellPrice: NaN,
@@ -127,6 +155,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 							thumbnail: "",
 							relatedImg: [],
 							idGenres: [],
+							idDdcCategory: [],
 						});
 						setPreviewThumbnail("");
 						setPreviewRelatedImages([]);
@@ -153,27 +182,19 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 		);
 	}
 
-	function handleThumnailImageUpload(
-		event: React.ChangeEvent<HTMLInputElement>
-	) {
+	function handleThumnailImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
 		const inputElement = event.target as HTMLInputElement;
 
 		if (inputElement.files && inputElement.files.length > 0) {
 			const selectedFile = inputElement.files[0];
-
 			const reader = new FileReader();
 
-			// Xử lý sự kiện khi tệp đã được đọc thành công
 			reader.onload = (e: any) => {
-				// e.target.result chính là chuỗi base64
 				const thumnailBase64 = e.target?.result as string;
-
 				setBook({ ...book, thumbnail: thumnailBase64 });
-
 				setPreviewThumbnail(URL.createObjectURL(selectedFile));
 			};
 
-			// Đọc tệp dưới dạng chuỗi base64
 			reader.readAsDataURL(selectedFile);
 		}
 	}
@@ -189,15 +210,11 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 				return;
 			}
 
-			// Duyệt qua từng file đã chọn
 			for (let i = 0; i < inputElement.files.length; i++) {
 				const selectedFile = inputElement.files[i];
-
 				const reader = new FileReader();
 
-				// Xử lý sự kiện khi tệp đã được đọc thành công
 				reader.onload = (e: any) => {
-					// e.target.result chính là chuỗi base64
 					const thumbnailBase64 = e.target?.result as string;
 
 					setBook((prevBook) => ({
@@ -206,12 +223,9 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 					}));
 
 					newPreviewImages.push(URL.createObjectURL(selectedFile));
-
-					// Cập nhật trạng thái với mảng mới
 					setPreviewRelatedImages(newPreviewImages);
 				};
 
-				// Đọc tệp dưới dạng chuỗi base64
 				reader.readAsDataURL(selectedFile);
 			}
 		}
@@ -227,14 +241,8 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 				<form onSubmit={hanleSubmit} className='form'>
 					<input type='hidden' id='idBook' value={book?.idBook} hidden />
 					<div className='row'>
-						<div
-							className={props.option === "update" ? "col-4" : "col-6"}
-						>
-							<Box
-								sx={{
-									"& .MuiTextField-root": { mb: 3 },
-								}}
-							>
+						<div className={props.option === "update" ? "col-4" : "col-6"}>
+							<Box sx={{ "& .MuiTextField-root": { mb: 3 } }}>
 								<TextField
 									required
 									id='filled-required'
@@ -262,12 +270,23 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 								<TextField
 									required
 									id='filled-required'
+									label='ISBN'
+									style={{ width: "100%" }}
+									value={book.isbn}
+									onChange={(e: any) =>
+										setBook({ ...book, isbn: e.target.value })
+									}
+									size='small'
+									disabled={props.option === "update"}
+								/>
+
+								<TextField
+									required
+									id='filled-required'
 									label='Giá niêm yết'
 									style={{ width: "100%" }}
 									type='number'
-									value={
-										Number.isNaN(book.listPrice) ? "" : book.listPrice
-									}
+									value={Number.isNaN(book.listPrice) ? "" : book.listPrice}
 									onChange={(e: any) =>
 										setBook({
 											...book,
@@ -278,23 +297,16 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 								/>
 							</Box>
 						</div>
-						<div
-							className={props.option === "update" ? "col-4" : "col-6"}
-						>
-							<Box
-								sx={{
-									"& .MuiTextField-root": { mb: 3 },
-								}}
-							>
+
+						<div className={props.option === "update" ? "col-4" : "col-6"}>
+							<Box sx={{ "& .MuiTextField-root": { mb: 3 } }}>
 								<TextField
 									required
 									id='filled-required'
 									label='Số lượng để bán'
 									style={{ width: "100%" }}
 									type='number'
-									value={
-										Number.isNaN(book.quantityForSold) ? "" : book.quantityForSold
-									}
+									value={Number.isNaN(book.quantityForSold) ? "" : book.quantityForSold}
 									onChange={(e: any) =>
 										setBook({
 											...book,
@@ -303,15 +315,33 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 									}
 									size='small'
 								/>
+
+								<TextField
+									required
+									id='filled-required'
+									label='Số lượng để mượn'
+									style={{ width: "100%" }}
+									type='number'
+									value={Number.isNaN(book.quantityForBorrow) ? "" : book.quantityForBorrow}
+									onChange={(e: any) =>
+										setBook({
+											...book,
+											quantityForBorrow: parseInt(e.target.value),
+										})
+									}
+									size='small'
+								/>
+
 								<SelectMultiple
 									selectedList={genresListSelected}
 									setSelectedList={setGenresListSelected}
-									selectedListName={SelectedListName}
-									setSelectedListName={setSelectedListName}
+									selectedListName={selectedGenresName}
+									setSelectedListName={setSelectedGenresName}
 									values={genresList}
 									setValue={setBook}
-									key={reloadCount}
+									key={`genres-${reloadCount}`}
 									required={true}
+									label="Thể loại"
 								/>
 
 								<TextField
@@ -319,11 +349,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 									label='Giảm giá (%)'
 									style={{ width: "100%" }}
 									type='number'
-									value={
-										Number.isNaN(book.discountPercent)
-											? ""
-											: book.discountPercent
-									}
+									value={Number.isNaN(book.discountPercent) ? "" : book.discountPercent}
 									onChange={(e: any) => {
 										setBook({
 											...book,
@@ -331,9 +357,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 											sellPrice:
 												book.listPrice -
 												Math.round(
-													(book.listPrice *
-														Number.parseInt(e.target.value)) /
-														100
+													(book.listPrice * Number.parseInt(e.target.value)) / 100
 												),
 										});
 									}}
@@ -341,22 +365,17 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 								/>
 							</Box>
 						</div>
+
 						{props.option === "update" && (
 							<div className='col-4'>
-								<Box
-									sx={{
-										"& .MuiTextField-root": { mb: 3 },
-									}}
-								>
+								<Box sx={{ "& .MuiTextField-root": { mb: 3 } }}>
 									<TextField
 										id='filled-required'
 										label='Giá bán'
 										style={{ width: "100%" }}
 										value={book.sellPrice.toLocaleString("vi-vn")}
 										type='number'
-										InputProps={{
-											disabled: true,
-										}}
+										InputProps={{ disabled: true }}
 										size='small'
 									/>
 
@@ -365,9 +384,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 										label='Đã bán'
 										style={{ width: "100%" }}
 										value={book.soldQuantity}
-										InputProps={{
-											disabled: true,
-										}}
+										InputProps={{ disabled: true }}
 										size='small'
 									/>
 
@@ -376,14 +393,36 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 										label='Điểm đánh giá'
 										style={{ width: "100%" }}
 										value={book.avgRating}
-										InputProps={{
-											disabled: true,
-										}}
+										InputProps={{ disabled: true }}
+										size='small'
+									/>
+
+									<TextField
+										id='filled-required'
+										label='Số lượng đã mượn'
+										style={{ width: "100%" }}
+										value={book.borrowQuantity}
+										InputProps={{ disabled: true }}
 										size='small'
 									/>
 								</Box>
 							</div>
 						)}
+
+						<div className='col-12'>
+							<SelectMultiple
+								selectedList={ddcCategoriesSelected}
+								setSelectedList={setDdcCategoriesSelected}
+								selectedListName={selectedDdcCategoriesName}
+								setSelectedListName={setSelectedDdcCategoriesName}
+								values={ddcCategoriesList}
+								setValue={setBook}
+								key={`ddc-${reloadCount}`}
+								required={true}
+								label="DDC Category"
+							/>
+						</div>
+
 						<div className='col-12'>
 							<Box>
 								<TextField
@@ -400,6 +439,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 								/>
 							</Box>
 						</div>
+
 						<div className='d-flex align-items-center mt-3'>
 							<Button
 								size='small'
@@ -419,6 +459,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 							</Button>
 							<img src={previewThumbnail} alt='' width={100} />
 						</div>
+
 						<div className='d-flex align-items-center mt-3'>
 							<Button
 								size='small'
@@ -429,7 +470,6 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 								Tải ảnh liên quan
 								<input
 									style={{ opacity: "0", width: "10px" }}
-									// required
 									type='file'
 									accept='image/*'
 									onChange={handleImageUpload}
@@ -437,8 +477,8 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 									alt=''
 								/>
 							</Button>
-							{previewRelatedImages.map((imgURL) => (
-								<img src={imgURL} alt='' width={100} />
+							{previewRelatedImages.map((imgURL, index) => (
+								<img key={index} src={imgURL} alt='' width={100} />
 							))}
 							{previewRelatedImages.length > 0 && (
 								<Button
@@ -452,6 +492,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 							)}
 						</div>
 					</div>
+
 					{props.option !== "view" && (
 						<LoadingButton
 							className='w-100 my-3'

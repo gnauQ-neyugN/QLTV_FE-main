@@ -1,4 +1,5 @@
 import GenreModel from "./GenreModel";
+import DdcCategoryModel from "./DdcCategoryModel";
 
 class BookModel {
    id?: any;
@@ -18,11 +19,34 @@ class BookModel {
    thumbnail?: string;
    relatedImg?: string[];
    idGenres?: number[];
+   idDdcCategory?: number[];
    genresList?: GenreModel[];
+   ddcCategoryList?: DdcCategoryModel[];
    isFavorited?: boolean;
 
-
-   constructor(id: any, idBook: number, nameBook: string, author: string, isbn: string, description: string, listPrice: number, sellPrice: number, quantityForSold: number, quantityForBorrow: number, borrowQuantity: number, avgRating: number, soldQuantity: number, discountPercent: number, thumbnail: string, relatedImg: string[], idGenres: number[], genresList: GenreModel[], isFavorited: boolean) {
+   constructor(
+       id: any,
+       idBook: number,
+       nameBook: string,
+       author: string,
+       isbn: string,
+       description: string,
+       listPrice: number,
+       sellPrice: number,
+       quantityForSold: number,
+       quantityForBorrow: number,
+       borrowQuantity: number,
+       avgRating: number,
+       soldQuantity: number,
+       discountPercent: number,
+       thumbnail: string,
+       relatedImg: string[],
+       idGenres: number[],
+       idDdcCategory: number[],
+       genresList: GenreModel[],
+       ddcCategoryList: DdcCategoryModel[],
+       isFavorited: boolean
+   ) {
       this.id = id;
       this.idBook = idBook;
       this.nameBook = nameBook;
@@ -40,7 +64,9 @@ class BookModel {
       this.thumbnail = thumbnail;
       this.relatedImg = relatedImg;
       this.idGenres = idGenres;
+      this.idDdcCategory = idDdcCategory;
       this.genresList = genresList;
+      this.ddcCategoryList = ddcCategoryList;
       this.isFavorited = isFavorited;
    }
 }
