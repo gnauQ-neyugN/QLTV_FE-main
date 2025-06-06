@@ -213,7 +213,7 @@ const LibraryViolationTypeManagement = () => {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    id: currentViolation.id,
+                    idLibraryViolationType: currentViolation.id,
                     code: currentViolation.code,
                     description: currentViolation.description,
                     fine: currentViolation.fine

@@ -33,7 +33,7 @@ export async function get1DdcCategory(idDdcCategory: number): Promise<resultInte
 }
 
 export async function getDdcCategoryByIdBook(idBook: number): Promise<resultInterface> {
-    const endpoint = endpointBE + `/books/${idBook}/listDdcCategories`;
+    const endpoint = endpointBE + `/books/${idBook}/listDdcCategory`;
 
     return getDdcCategory(endpoint);
 }

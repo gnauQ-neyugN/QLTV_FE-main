@@ -1,8 +1,17 @@
 import { DeleteOutlineOutlined } from "@mui/icons-material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import { Box, CircularProgress, IconButton, Tooltip } from "@mui/material";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import SearchIcon from "@mui/icons-material/Search";
+import {
+	Box,
+	CircularProgress,
+	IconButton,
+	Tooltip,
+	TextField,
+	InputAdornment
+} from "@mui/material";
 import { GridColDef } from "@mui/x-data-grid";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { DataTable } from "../../../layouts/utils/DataTable";
 import BookModel from "../../../model/BookModel";
 import { getAllBook } from "../../../api/BookApi";
@@ -21,6 +30,7 @@ interface BookTableProps {
 
 export const BookTable: React.FC<BookTableProps> = (props) => {
 	const [loading, setLoading] = useState(true);
+	const [searchTerm, setSearchTerm] = useState("");
 
 	// Tạo các biến của confirm dialog
 	const confirm = useConfirm();
@@ -56,6 +66,23 @@ export const BookTable: React.FC<BookTableProps> = (props) => {
 
 		fetchData();
 	}, [props.keyCountReload]);
+
+	// Lọc dữ liệu theo từ khóa tìm kiếm
+	const filteredData = useMemo(() => {
+		if (!searchTerm) return data;
+
+		return data.filter((book) =>
+			book.nameBook?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			book.isbn?.toLowerCase().includes(searchTerm.toLowerCase())
+		);
+	}, [data, searchTerm]);
+
+	// Xử lý xem chi tiết sách
+	const handleViewBook = (id: any) => {
+		props.setOption("view");
+		props.setId(id);
+		props.handleOpenModal();
+	};
 
 	// Xử lý xoá sách
 	const handleDeleteBook = (id: any) => {
@@ -100,29 +127,23 @@ export const BookTable: React.FC<BookTableProps> = (props) => {
 			},
 		},
 		{ field: "nameBook", headerName: "TÊN SÁCH", width: 350 },
-		{ field: "quantity", headerName: "SỐ LƯỢNG", width: 100 },
-		{
-			field: "sellPrice",
-			headerName: "GIÁ BÁN",
-			width: 120,
-			renderCell: (params) => {
-				return (
-					<span>
-						{Number.parseInt(params.value).toLocaleString("vi-vn")}đ
-					</span>
-				);
-			},
-		},
-		{ field: "author", headerName: "TÁC GIẢ", width: 150 },
-
+		{ field: "isbn", headerName: "MÃ ISBN", width: 120 },
 		{
 			field: "action",
 			headerName: "HÀNH ĐỘNG",
-			width: 200,
+			width: 250,
 			type: "actions",
 			renderCell: (item) => {
 				return (
 					<div>
+						<Tooltip title={"Xem chi tiết"}>
+							<IconButton
+								color='info'
+								onClick={() => handleViewBook(item.id)}
+							>
+								<VisibilityOutlinedIcon />
+							</IconButton>
+						</Tooltip>
 						<Tooltip title={"Chỉnh sửa"}>
 							<IconButton
 								color='primary'
@@ -163,5 +184,28 @@ export const BookTable: React.FC<BookTableProps> = (props) => {
 		);
 	}
 
-	return <DataTable columns={columns} rows={data} />;
+	return (
+		<Box>
+			{/* Thanh tìm kiếm */}
+			<Box sx={{ mb: 2 }}>
+				<TextField
+					fullWidth
+					placeholder="Tìm kiếm theo tên sách hoặc mã ISBN..."
+					value={searchTerm}
+					onChange={(e) => setSearchTerm(e.target.value)}
+					InputProps={{
+						startAdornment: (
+							<InputAdornment position="start">
+								<SearchIcon />
+							</InputAdornment>
+						),
+					}}
+					sx={{ maxWidth: 400 }}
+				/>
+			</Box>
+
+			{/* Bảng dữ liệu */}
+			<DataTable columns={columns} rows={filteredData} />
+		</Box>
+	);
 };

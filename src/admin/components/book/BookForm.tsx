@@ -2,7 +2,7 @@ import React, { FormEvent, useEffect, useState } from "react";
 import BookModel from "../../../model/BookModel";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
-import { Box, Button } from "@mui/material";
+import { Box, Button, Card, CardMedia, Grid, Chip, Divider } from "@mui/material";
 import { CloudUpload } from "@mui/icons-material";
 import { toast } from "react-toastify";
 import GenreModel from "../../../model/GenreModel";
@@ -57,35 +57,43 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 	// Biến reload (cho selectMultiple)
 	const [reloadCount, setReloadCount] = useState(0);
 
-	// Lấy dữ liệu khi update
+	// Lấy dữ liệu khi update hoặc view
 	useEffect(() => {
-		if (props.option === "update") {
+		if (props.option === "update" || props.option === "view") {
 			getBookByIdAllInformation(props.id).then((response) => {
 				setBook(response as BookModel);
 				setPreviewThumbnail(response?.thumbnail as string);
 				setPreviewRelatedImages(response?.relatedImg as string[]);
 
+				// Reset arrays trước khi set
+				setSelectedGenresName([]);
+				setSelectedDdcCategoriesName([]);
+
 				// Set genres
+				const genreNames: any[] = [];
+				const genreIds: number[] = [];
 				response?.genresList?.forEach((data) => {
-					setSelectedGenresName((prev) => [...prev, data.nameGenre]);
-					setBook((prevBook) => {
-						return {
-							...prevBook,
-							idGenres: [...(prevBook.idGenres || []), data.idGenre],
-						};
-					});
+					genreNames.push(data.nameGenre);
+					genreIds.push(data.idGenre);
 				});
+				setSelectedGenresName(genreNames);
+				setBook((prevBook) => ({
+					...prevBook,
+					idGenres: genreIds,
+				}));
 
 				// Set DDC categories
+				const ddcNames: any[] = [];
+				const ddcIds: number[] = [];
 				response?.ddcCategoryList?.forEach((data) => {
-					setSelectedDdcCategoriesName((prev) => [...prev, data.nameCategory]);
-					setBook((prevBook) => {
-						return {
-							...prevBook,
-							idDdcCategory: [...(prevBook.idDdcCategory || []), data.idDdcCategory],
-						};
-					});
+					ddcNames.push(data.nameCategory);
+					ddcIds.push(data.idDdcCategory);
 				});
+				setSelectedDdcCategoriesName(ddcNames);
+				setBook((prevBook) => ({
+					...prevBook,
+					idDdcCategory: ddcIds,
+				}));
 			});
 		}
 	}, [props.option, props.id]);
@@ -97,17 +105,26 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 		});
 
 		getAllDdcCategories().then((response) => {
-			setDdcCategoriesList(response.ddcCategoryList);
+			// Format DDC categories với mã - tên
+			const formattedDdcCategories = response.ddcCategoryList.map(category => ({
+				...category,
+				nameCategory: `${category.idDdcCategory.toString().padStart(3, '0')} - ${category.nameCategory}`
+			}));
+			setDdcCategoriesList(formattedDdcCategories);
 		});
 	}, [props.option]);
 
 	// Lưu danh sách thể loại và DDC categories của sách
 	useEffect(() => {
-		setBook({ ...book, idGenres: genresListSelected });
+		if (props.option !== "view") {
+			setBook({ ...book, idGenres: genresListSelected });
+		}
 	}, [genresListSelected]);
 
 	useEffect(() => {
-		setBook({ ...book, idDdcCategory: ddcCategoriesSelected });
+		if (props.option !== "view") {
+			setBook({ ...book, idDdcCategory: ddcCategoriesSelected });
+		}
 	}, [ddcCategoriesSelected]);
 
 	async function hanleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -231,6 +248,183 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 		}
 	}
 
+	// Render chi tiết sách khi option = "view"
+	if (props.option === "view") {
+		return (
+			<div>
+				<Typography className='text-center' variant='h4' component='h2'>
+					CHI TIẾT SÁCH
+				</Typography>
+				<hr />
+				<div className='container px-5'>
+					<Grid container spacing={3}>
+						{/* Phần ảnh thumbnail */}
+						<Grid item xs={12} md={4}>
+							<Card>
+								<CardMedia
+									component="img"
+									height="400"
+									image={previewThumbnail || "/placeholder-book.jpg"}
+									alt={book.nameBook}
+									sx={{ objectFit: "contain" }}
+								/>
+							</Card>
+						</Grid>
+
+						{/* Phần thông tin chính */}
+						<Grid item xs={12} md={8}>
+							<Box sx={{ p: 2 }}>
+								<Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+									{book.nameBook}
+								</Typography>
+
+								<Typography variant="h6" color="text.secondary" gutterBottom>
+									Tác giả: {book.author}
+								</Typography>
+
+								<Divider sx={{ my: 2 }} />
+
+								<Grid container spacing={2}>
+									<Grid item xs={6}>
+										<Typography variant="body1"><strong>ISBN:</strong> {book.isbn}</Typography>
+									</Grid>
+									<Grid item xs={6}>
+										<Typography variant="body1"><strong>ID Sách:</strong> {book.idBook}</Typography>
+									</Grid>
+									<Grid item xs={6}>
+										<Typography variant="body1">
+											<strong>Giá niêm yết:</strong> {book.listPrice?.toLocaleString("vi-VN")}₫
+										</Typography>
+									</Grid>
+									<Grid item xs={6}>
+										<Typography variant="body1">
+											<strong>Giá bán:</strong> {book.sellPrice?.toLocaleString("vi-VN")}₫
+										</Typography>
+									</Grid>
+									<Grid item xs={6}>
+										<Typography variant="body1">
+											<strong>Giảm giá:</strong> {book.discountPercent}%
+										</Typography>
+									</Grid>
+									<Grid item xs={6}>
+										<Typography variant="body1">
+											<strong>Điểm đánh giá:</strong> {book.avgRating ? `${book.avgRating}/5` : "Chưa có đánh giá"}
+										</Typography>
+									</Grid>
+								</Grid>
+
+								<Divider sx={{ my: 2 }} />
+
+								{/* Số lượng */}
+								<Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+									Thông tin số lượng
+								</Typography>
+								<Grid container spacing={2}>
+									<Grid item xs={6}>
+										<Typography variant="body1"><strong>Số lượng để bán:</strong> {book.quantityForSold}</Typography>
+									</Grid>
+									<Grid item xs={6}>
+										<Typography variant="body1"><strong>Đã bán:</strong> {book.soldQuantity}</Typography>
+									</Grid>
+									<Grid item xs={6}>
+										<Typography variant="body1"><strong>Số lượng để mượn:</strong> {book.quantityForBorrow}</Typography>
+									</Grid>
+									<Grid item xs={6}>
+										<Typography variant="body1"><strong>Đã mượn:</strong> {book.borrowQuantity}</Typography>
+									</Grid>
+								</Grid>
+
+								<Divider sx={{ my: 2 }} />
+
+								{/* Thể loại */}
+								<Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+									Thể loại
+								</Typography>
+								<Box sx={{ mb: 2 }}>
+									{selectedGenresName.map((genre, index) => (
+										<Chip
+											key={index}
+											label={genre}
+											variant="outlined"
+											color="primary"
+											sx={{ mr: 1, mb: 1 }}
+										/>
+									))}
+								</Box>
+								{/* DDC Categories */}
+								<Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+									Mã DDC
+								</Typography>
+								<Box sx={{ mb: 2 }}>
+									<Typography variant="body1" sx={{
+										backgroundColor: '#f5f5f5',
+										padding: '8px 12px',
+										borderRadius: '4px',
+										fontFamily: 'monospace',
+										fontSize: '14px'
+									}}>
+										{book.ddcCategoryList?.map(category => {
+											const code = category.idDdcCategory.toString();
+											return code.padStart(3, '0');
+										}).join(' - ') || 'Chưa phân loại'}
+									</Typography>
+								</Box>
+							</Box>
+						</Grid>
+
+						{/* Mô tả sách */}
+						<Grid item xs={12}>
+							<Divider sx={{ my: 2 }} />
+							<Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+								Mô tả sách
+							</Typography>
+							<Typography variant="body1" sx={{ textAlign: 'justify', lineHeight: 1.6 }}>
+								{book.description || "Chưa có mô tả"}
+							</Typography>
+						</Grid>
+
+						{/* Ảnh liên quan */}
+						{previewRelatedImages.length > 0 && (
+							<Grid item xs={12}>
+								<Divider sx={{ my: 2 }} />
+								<Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+									Ảnh liên quan
+								</Typography>
+								<Grid container spacing={2}>
+									{previewRelatedImages.map((imgURL, index) => (
+										<Grid item xs={6} sm={4} md={3} key={index}>
+											<Card>
+												<CardMedia
+													component="img"
+													height="200"
+													image={imgURL}
+													alt={`Related image ${index + 1}`}
+													sx={{ objectFit: "cover" }}
+												/>
+											</Card>
+										</Grid>
+									))}
+								</Grid>
+							</Grid>
+						)}
+					</Grid>
+
+					{/* Nút đóng */}
+					<Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+						<Button
+							variant="contained"
+							onClick={props.handleCloseModal}
+							sx={{ minWidth: 120 }}
+						>
+							Đóng
+						</Button>
+					</Box>
+				</div>
+			</div>
+		);
+	}
+
+	// Render form thêm/sửa khi option = "add" hoặc "update"
 	return (
 		<div>
 			<Typography className='text-center' variant='h4' component='h2'>
@@ -419,7 +613,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 								setValue={setBook}
 								key={`ddc-${reloadCount}`}
 								required={true}
-								label="DDC Category"
+								label="Mã phân loại DDC"
 							/>
 						</div>
 
@@ -493,17 +687,15 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 						</div>
 					</div>
 
-					{props.option !== "view" && (
-						<LoadingButton
-							className='w-100 my-3'
-							type='submit'
-							loading={statusBtn}
-							variant='outlined'
-							sx={{ width: "25%", padding: "10px" }}
-						>
-							{props.option === "add" ? "Tạo sách" : "Lưu sách"}
-						</LoadingButton>
-					)}
+					<LoadingButton
+						className='w-100 my-3'
+						type='submit'
+						loading={statusBtn}
+						variant='outlined'
+						sx={{ width: "25%", padding: "10px" }}
+					>
+						{props.option === "add" ? "Tạo sách" : "Lưu sách"}
+					</LoadingButton>
 				</form>
 			</div>
 		</div>

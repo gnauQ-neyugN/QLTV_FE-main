@@ -32,9 +32,6 @@ import { ForgotPassword } from "./layouts/user/ForgotPassword";
 import { CartItemProvider } from "./layouts/utils/CartItemContext";
 import { BorrowCartProvider } from "./layouts/utils/BorrowCartContext";
 import CheckoutStatus from "./layouts/pages/CheckoutStatus";
-import BorrowRecordsPage from "./layouts/pages/BorrowRecordsPage";
-import BorrowCartPage from "./layouts/pages/BorrowCartPage";
-import BorrowRecordManagementPage from "./admin/BorrowRecordManagement";
 // Import new library card management components
 import LibraryCardManagementPage from "./admin/LibraryCardManagement";
 import LibraryViolationTypeManagementPage from "./admin/LibraryCardViolationTypeManagement";
@@ -70,8 +67,6 @@ const MyRoutes = () => {
 								element={<MyFavoriteBooksPage />}
 							/>
 							<Route path='/cart' element={<CartPage />} />
-							<Route path='/borrow-cart' element={<BorrowCartPage />} />
-							<Route path='/borrow-records' element={<BorrowRecordsPage />} />
 							<Route path='/register' element={<RegisterPage />} />
 							<Route path='/login' element={<LoginPage />} />
 							<Route
@@ -128,10 +123,6 @@ const MyRoutes = () => {
 										<Route
 											path='/admin/feedback'
 											element={<FeedbackPage />}
-										/>
-										<Route
-											path='/admin/borrow'
-											element={<BorrowRecordManagementPage />}
 										/>
 										{/* Add new routes for library card management */}
 										<Route

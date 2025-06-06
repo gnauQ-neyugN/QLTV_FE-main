@@ -7,6 +7,7 @@ import "react-responsive-carousel/lib/styles/carousel.min.css";
 import SelectQuantity from "./components/select-quantity/SelectQuantity";
 import Button from "@mui/material/Button";
 import { ShoppingCartOutlined } from "@mui/icons-material";
+import LibraryAddIcon from "@mui/icons-material/LibraryAdd";
 import Comment from "./components/comment/Comment";
 import TextEllipsis from "./components/text-ellipsis/TextEllipsis";
 import { getGenreByIdBook } from "../../api/GenreApi";
@@ -20,16 +21,20 @@ import { toast } from "react-toastify";
 import { endpointBE } from "../utils/Constant";
 import { getIdUserByToken, isToken } from "../utils/JwtService";
 import { useCartItem } from "../utils/CartItemContext";
+import { useBorrowCart } from "../utils/BorrowCartContext";
 import { Skeleton } from "@mui/material";
 import CartItemModel from "../../model/CartItemModel";
 import { CheckoutPage } from "../pages/CheckoutPage";
 import useScrollToTop from "../../hooks/ScrollToTop";
+import { useNavigate } from "react-router-dom";
 
 interface BookDetailProps {}
 
 const BookDetail: React.FC<BookDetailProps> = (props) => {
 	useScrollToTop(); // Mỗi lần vào component này thì sẽ ở trên cùng
 	const { setTotalCart, cartList } = useCartItem();
+	const { borrowCartList, setBorrowCartList, setTotalBorrowItems } = useBorrowCart();
+	const navigate = useNavigate();
 
 	// Lấy mã sách từ url
 	const { idBook } = useParams();
@@ -83,14 +88,15 @@ const BookDetail: React.FC<BookDetailProps> = (props) => {
 	}, []);
 
 	const [quantity, setQuantity] = useState(1);
-	// Xử lý tăng số lượng
+
+	// Xử lý tăng số lượng (mua)
 	const add = () => {
 		if (quantity < (book?.quantityForSold ? book?.quantityForSold : 1)) {
 			setQuantity(quantity + 1);
 		}
 	};
 
-	// Xử lý giảm số lượng
+	// Xử lý giảm số lượng (mua)
 	const reduce = () => {
 		if (quantity > 1) {
 			setQuantity(quantity - 1);
@@ -171,6 +177,44 @@ const BookDetail: React.FC<BookDetailProps> = (props) => {
 		// Thông báo toast
 		toast.success("Thêm vào giỏ hàng thành công");
 		setTotalCart(cartList.length);
+	};
+
+	// Xử lý thêm sách vào phiếu mượn
+	const handleAddToBorrowCart = (newBook: BookModel) => {
+		if (!isToken()) {
+			toast.info("Bạn phải đăng nhập để sử dụng chức năng này");
+			navigate("/login");
+			return;
+		}
+
+		try {
+			// Check if book is already in borrow cart
+			let isExistBook = borrowCartList.find(
+				(cartItem) => cartItem.book.idBook === newBook.idBook
+			);
+
+			// If book already exists in borrow cart, increase quantity
+			if (isExistBook) {
+				isExistBook.quantity += 1;
+			} else {
+				// Add new book to borrow cart
+				borrowCartList.push({
+					quantity: 1,
+					book: newBook
+				});
+			}
+
+			// Update local storage
+			localStorage.setItem("borrowCart", JSON.stringify(borrowCartList));
+			setTotalBorrowItems(borrowCartList.length);
+			setBorrowCartList([...borrowCartList]);
+
+			toast.success(`Đã thêm "${newBook.nameBook}" vào phiếu mượn`);
+
+		} catch (error) {
+			console.error("Lỗi khi thêm vào phiếu mượn:", error);
+			toast.error(`Lỗi khi thêm "${newBook.nameBook}" vào phiếu mượn`);
+		}
 	};
 
 	// Viewer hình ảnh
@@ -334,6 +378,8 @@ const BookDetail: React.FC<BookDetailProps> = (props) => {
 										</span>
 									</div>
 								</div>
+
+								{/* Thông tin giá và số lượng bán */}
 								<div className='price'>
 									<span className='discounted-price text-danger me-3'>
 										<strong style={{ fontSize: "32px" }}>
@@ -351,6 +397,7 @@ const BookDetail: React.FC<BookDetailProps> = (props) => {
 										</span>
 									</h4>
 								</div>
+
 								<div className='mt-3'>
 									<div className='d-flex align-items-center mt-3'>
 										<img
@@ -361,31 +408,25 @@ const BookDetail: React.FC<BookDetailProps> = (props) => {
 										<span className='ms-3'>Miễn phí vận chuyển</span>
 									</div>
 								</div>
-								<div className='d-flex align-items-center mt-3'>
-									<strong className='me-5'>Số lượng: </strong>
-									<SelectQuantity
-										max={book.quantityForSold}
-										quantity={quantity}
-										setQuantity={setQuantity}
-										add={add}
-										reduce={reduce}
-									/>
-									<span className='ms-4'>
-										{book.quantityForSold} sản phẩm có sẵn
-									</span>
-								</div>
-								<div className='mt-4 d-flex align-items-center'>
-									{book.quantityForSold === 0 ? (
-										<Button
-											variant='outlined'
-											size='large'
-											className='me-3'
-											color='error'
-										>
-											Hết hàng
-										</Button>
-									) : (
-										<>
+
+								{/* Section cho mua sách */}
+								{book.quantityForSold && book.quantityForSold > 0 && (
+									<div className='border p-3 my-3 rounded'>
+										<h5 className='text-primary mb-3'>📦 Mua sách</h5>
+										<div className='d-flex align-items-center mt-3'>
+											<strong className='me-5'>Số lượng: </strong>
+											<SelectQuantity
+												max={book.quantityForSold}
+												quantity={quantity}
+												setQuantity={setQuantity}
+												add={add}
+												reduce={reduce}
+											/>
+											<span className='ms-4'>
+												{book.quantityForSold} sản phẩm có sẵn
+											</span>
+										</div>
+										<div className='mt-3 d-flex align-items-center'>
 											<Button
 												variant='outlined'
 												size='large'
@@ -403,9 +444,61 @@ const BookDetail: React.FC<BookDetailProps> = (props) => {
 											>
 												Mua ngay
 											</Button>
-										</>
-									)}
-								</div>
+										</div>
+									</div>
+								)}
+
+								{/* Section cho mượn sách */}
+								{book.quantityForBorrow && book.quantityForBorrow > 0 && (
+									<div className='border p-3 my-3 rounded' style={{borderColor: '#1976d2'}}>
+										<h5 className='text-info mb-3'>📚 Mượn sách</h5>
+										<p className='mb-3'>
+											<span className='badge bg-info'>
+												{book.quantityForBorrow} quyển có thể mượn
+											</span>
+										</p>
+										<div>
+											<Button
+												variant='contained'
+												size='large'
+												startIcon={<LibraryAddIcon />}
+												color='info'
+												onClick={() => handleAddToBorrowCart(book)}
+											>
+												Thêm vào phiếu mượn (1 quyển)
+											</Button>
+										</div>
+									</div>
+								)}
+
+								{/* Hiển thị khi hết hàng */}
+								{(!book.quantityForSold || book.quantityForSold === 0) && (!book.quantityForBorrow || book.quantityForBorrow === 0) && (
+									<div className='mt-4'>
+										<Button
+											variant='outlined'
+											size='large'
+											className='me-3'
+											color='error'
+											disabled
+										>
+											Hết hàng và không có sách để mượn
+										</Button>
+									</div>
+								)}
+
+								{/* Hiển thị khi chỉ hết hàng bán */}
+								{(!book.quantityForSold || book.quantityForSold === 0) && book.quantityForBorrow && book.quantityForBorrow > 0 && (
+									<div className='alert alert-warning mt-3'>
+										<strong>Thông báo:</strong> Sách đã hết hàng để bán, nhưng bạn vẫn có thể mượn sách.
+									</div>
+								)}
+
+								{/* Hiển thị khi chỉ hết sách mượn */}
+								{book.quantityForSold && book.quantityForSold > 0 && (!book.quantityForBorrow || book.quantityForBorrow === 0) && (
+									<div className='alert alert-info mt-3'>
+										<strong>Thông báo:</strong> Hiện tại không có sách để mượn, nhưng bạn vẫn có thể mua sách.
+									</div>
+								)}
 							</div>
 						</div>
 					</div>
