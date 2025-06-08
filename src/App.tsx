@@ -32,9 +32,11 @@ import { ForgotPassword } from "./layouts/user/ForgotPassword";
 import { CartItemProvider } from "./layouts/utils/CartItemContext";
 import { BorrowCartProvider } from "./layouts/utils/BorrowCartContext";
 import CheckoutStatus from "./layouts/pages/CheckoutStatus";
-// Import new library card management components
+// Import library card management components
 import LibraryCardManagementPage from "./admin/LibraryCardManagement";
 import LibraryViolationTypeManagementPage from "./admin/LibraryCardViolationTypeManagement";
+// Import borrow record management component
+import BorrowRecordManagementPage from "./admin/BorrowRecordManagement";
 
 const MyRoutes = () => {
 	const [reloadAvatar, setReloadAvatar] = useState(0);
@@ -124,7 +126,7 @@ const MyRoutes = () => {
 											path='/admin/feedback'
 											element={<FeedbackPage />}
 										/>
-										{/* Add new routes for library card management */}
+										{/* Library card management routes */}
 										<Route
 											path='/admin/library-card'
 											element={<LibraryCardManagementPage />}
@@ -132,6 +134,11 @@ const MyRoutes = () => {
 										<Route
 											path='/admin/violation-types'
 											element={<LibraryViolationTypeManagementPage />}
+										/>
+										{/* Borrow record management route */}
+										<Route
+											path='/admin/borrow'
+											element={<BorrowRecordManagementPage />}
 										/>
 										{isAdminPath && (
 											<Route path='*' element={<Error404Page />} />
