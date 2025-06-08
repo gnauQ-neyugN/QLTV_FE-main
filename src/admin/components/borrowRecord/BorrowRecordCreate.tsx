@@ -455,12 +455,12 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                             <table className="table table-striped mb-0">
                                 <thead style={{ backgroundColor: "#f5f5f5" }}>
                                 <tr>
-                                    <th width="60">STT</th>
+                                    <th>STT</th>
                                     <th>Sách</th>
                                     <th>Mã vạch</th>
                                     <th>Vị trí</th>
                                     <th>Tình trạng</th>
-                                    <th width="100" className="text-center">Thao tác</th>
+                                    <th className="text-center">Thao tác</th>
                                 </tr>
                                 </thead>
                                 <tbody>

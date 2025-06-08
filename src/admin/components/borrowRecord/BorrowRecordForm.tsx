@@ -117,7 +117,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
             } catch (error) {
                 console.error("Error:", error);
-                alert("Failed to load borrow record");
+                toast.error("Failed to load borrow record");
             } finally {
                 setLoading(false);
             }
@@ -135,7 +135,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
             const allBooksReturned = details.every(detail => detail.isReturned);
 
             if (!allBooksReturned) {
-                alert("Không thể cập nhật trạng thái phiếu mượn thành 'Đã trả' vì còn sách chưa được trả!");
+                toast.warning("Không thể cập nhật trạng thái phiếu mượn thành 'Đã trả' vì còn sách chưa được trả!");
                 return;
             }
 
@@ -192,7 +192,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
             await BorrowRecordApi.updateBookReturnStatus(updateParams);
 
-            alert("Cập nhật chi tiết phiếu mượn thành công");
+            toast.success("Cập nhật chi tiết phiếu mượn thành công");
 
             // Update local state
             const updatedDetails = details.map(detail =>
@@ -200,7 +200,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                     ? {
                         ...detail,
                         isReturned: updatedIsReturned,
-                        returnDate: updatedIsReturned ? effectiveReturnDate : undefined,
+                        returnDate: updatedIsReturned ? (effectiveReturnDate || undefined) : undefined,
                         notes: updatedNotes
                     }
                     : detail
@@ -215,13 +215,13 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
             // Notify if all books have been returned
             if (isAllReturnedNow && !wasAllReturnedBefore) {
-                alert("Tất cả sách đã được trả. Bạn có thể cập nhật trạng thái phiếu mượn thành 'Đã trả'.");
+                toast.info("Tất cả sách đã được trả. Bạn có thể cập nhật trạng thái phiếu mượn thành 'Đã trả'.");
             }
 
             handleCloseDetailDialog();
         } catch (error) {
             console.error("Error updating borrow record detail:", error);
-            alert((error as Error).message || "Failed to update borrow record detail");
+            toast.error((error as Error).message || "Failed to update borrow record detail");
         } finally {
             setUpdatingDetail(false);
         }
@@ -236,19 +236,19 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
         }
 
         if (!record) {
-            alert("No record data available");
+            toast.error("No record data available");
             return;
         }
 
         // Check if status is "Returned" but not all books have been returned
         if (newStatus === BORROW_RECORD_STATUS.RETURNED && !details.every(detail => detail.isReturned)) {
-            alert("Không thể cập nhật trạng thái phiếu mượn thành 'Đã trả' vì còn sách chưa được trả!");
+            toast.error("Không thể cập nhật trạng thái phiếu mượn thành 'Đã trả' vì còn sách chưa được trả!");
             return;
         }
 
         // Check if violation type is selected when status is "Returned"
         if (newStatus === BORROW_RECORD_STATUS.RETURNED && !selectedViolationType) {
-            alert("Vui lòng chọn loại vi phạm (hoặc 'Không vi phạm' nếu không có)");
+            toast.error("Vui lòng chọn loại vi phạm (hoặc 'Không vi phạm' nếu không có)");
             return;
         }
 
@@ -264,7 +264,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
             await BorrowRecordApi.updateBorrowRecord(updateParams);
 
-            alert("Cập nhật phiếu mượn thành công");
+            toast.success("Cập nhật phiếu mượn thành công");
 
             if (props.setKeyCountReload) {
                 props.setKeyCountReload(Math.random());
@@ -273,7 +273,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
             props.handleCloseModal();
         } catch (error) {
             console.error("Error updating borrow record:", error);
-            alert((error as Error).message || "Failed to update borrow record");
+            toast.error((error as Error).message || "Failed to update borrow record");
         } finally {
             setSubmitting(false);
         }
@@ -409,6 +409,19 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
     // Calculate statistics
     const stats = BorrowRecordApi.calculateBorrowRecordStats(details);
 
+    // Helper function to get status color for chips
+    const getStatusColorClass = (status: string) => {
+        const colorMap = BorrowRecordApi.getStatusColor(status);
+        switch (colorMap) {
+            case 'success': return 'bg-success';
+            case 'info': return 'bg-info';
+            case 'primary': return 'bg-primary';
+            case 'secondary': return 'bg-secondary';
+            case 'error': return 'bg-danger';
+            default: return 'bg-secondary';
+        }
+    };
+
     return (
         <div className="container bg-white p-4 rounded">
             <h2 className="text-center mb-4">
@@ -419,10 +432,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                 <div className="mb-4">
                     <div className="d-flex align-items-center mb-2">
                         <span className="me-2">Trạng thái hiện tại:</span>
-                        <span className={`badge ${BorrowRecordApi.getStatusColor(record.status) === 'success' ? 'bg-success' :
-                            BorrowRecordApi.getStatusColor(record.status) === 'warning' ? 'bg-warning' :
-                                BorrowRecordApi.getStatusColor(record.status) === 'info' ? 'bg-info' :
-                                    BorrowRecordApi.getStatusColor(record.status) === 'error' ? 'bg-danger' : 'bg-secondary'}`}>
+                        <span className={`badge ${getStatusColorClass(record.status)}`}>
                             {record.status}
                         </span>
                     </div>
@@ -465,3 +475,228 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                 </div>
 
                 <div className="mb-4">
+                    <h5 className="mb-2">Thống kê</h5>
+                    <div className="row">
+                        <div className="col-md-3">
+                            <div className="card text-center">
+                                <div className="card-body">
+                                    <h6 className="card-title">Tổng số đầu sách</h6>
+                                    <div className="h4 text-primary">{stats.totalTitles}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <div className="card text-center">
+                                <div className="card-body">
+                                    <h6 className="card-title">Tổng số sách</h6>
+                                    <div className="h4 text-info">{stats.totalBooks}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <div className="card text-center">
+                                <div className="card-body">
+                                    <h6 className="card-title">Đã trả</h6>
+                                    <div className="h4 text-success">{stats.returnedBooks}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <div className="card text-center">
+                                <div className="card-body">
+                                    <h6 className="card-title">Chưa trả</h6>
+                                    <div className="h4 text-warning">{stats.remainingBooks}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mb-4">
+                    <h5 className="mb-2">Tiến trình xử lý</h5>
+                    <div className="card p-3">
+                        <StepperComponent steps={steps} activeStep={activeStep} />
+                    </div>
+                </div>
+
+                <div className="mb-4">
+                    <h5 className="mb-2">Danh sách sách mượn</h5>
+                    <div className="card">
+                        <div className="table-responsive">
+                            <table className="table table-striped mb-0">
+                                <thead style={{ backgroundColor: "#f5f5f5" }}>
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Tên sách</th>
+                                    <th>Mã vạch</th>
+                                    <th>Vị trí</th>
+                                    <th>Tình trạng</th>
+                                    <th>Đã trả</th>
+                                    <th>Ngày trả</th>
+                                    <th>Ghi chú</th>
+                                    <th className="text-center">Thao tác</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {details.map((detail, index) => (
+                                    <tr key={detail.id}>
+                                        <td>{index + 1}</td>
+                                        <td>
+                                            <div>
+                                                <div className="fw-bold">{detail.bookItem.book.nameBook}</div>
+                                                <small className="text-muted">{detail.bookItem.book.author}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span className="badge bg-outline-secondary">{detail.bookItem.barcode}</span>
+                                        </td>
+                                        <td>{detail.bookItem.location}</td>
+                                        <td>
+                                                <span className={`badge ${
+                                                    detail.bookItem.condition >= 80 ? "bg-success" :
+                                                        detail.bookItem.condition >= 60 ? "bg-warning text-dark" : "bg-danger"
+                                                }`}>
+                                                    {detail.bookItem.condition}%
+                                                </span>
+                                        </td>
+                                        <td>
+                                                <span className={`badge ${detail.isReturned ? 'bg-success' : 'bg-warning'}`}>
+                                                    {detail.isReturned ? 'Đã trả' : 'Chưa trả'}
+                                                </span>
+                                        </td>
+                                        <td>{BorrowRecordApi.formatDate(detail.returnDate)}</td>
+                                        <td>{detail.notes || "—"}</td>
+                                        <td className="text-center">
+                                            {props.option === "update" && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-primary"
+                                                    onClick={() => handleOpenDetailDialog(detail)}
+                                                    title="Cập nhật trạng thái"
+                                                >
+                                                    <i className="fas fa-edit"></i>
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {props.option === "update" && (
+                    <div className="mb-4">
+                        <h5 className="mb-2">Cập nhật phiếu mượn</h5>
+                        <div className="card p-3">
+                            <div className="row">
+                                <div className="col-md-6 mb-3">
+                                    <label className="form-label">Trạng thái phiếu mượn</label>
+                                    <select
+                                        className="form-control"
+                                        value={newStatus}
+                                        onChange={(e) => handleStatusChange(e as any)}
+                                    >
+                                        <option value={BORROW_RECORD_STATUS.PROCESSING}>Đang xử lý</option>
+                                        <option value={BORROW_RECORD_STATUS.APPROVED}>Đã duyệt</option>
+                                        <option value={BORROW_RECORD_STATUS.BORROWING}>Đang mượn</option>
+                                        <option value={BORROW_RECORD_STATUS.RETURNED}>Đã trả</option>
+                                        <option value={BORROW_RECORD_STATUS.CANCELLED}>Hủy</option>
+                                    </select>
+                                </div>
+
+                                {showViolationSelect && (
+                                    <div className="col-md-6 mb-3">
+                                        <label className="form-label">Loại vi phạm</label>
+                                        <select
+                                            className="form-control"
+                                            value={selectedViolationType}
+                                            onChange={(e) => handleViolationTypeChange(e as any)}
+                                            required
+                                        >
+                                            <option value="">Chọn loại vi phạm</option>
+                                            <option value="Không vi phạm">Không vi phạm</option>
+                                            {violationTypes.map((type) => (
+                                                <option key={type.code} value={type.code}>
+                                                    {type.code} - {type.description}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div className="col-12">
+                                    <label className="form-label">Ghi chú</label>
+                                    <textarea
+                                        className="form-control"
+                                        rows={3}
+                                        value={newNotes}
+                                        onChange={(e) => setNewNotes(e.target.value)}
+                                        placeholder="Nhập ghi chú cho phiếu mượn..."
+                                    />
+                                </div>
+                            </div>
+
+                            {newStatus === BORROW_RECORD_STATUS.RETURNED && !stats.allReturned && (
+                                <div className="alert alert-warning mt-3">
+                                    <i className="fas fa-exclamation-triangle me-2"></i>
+                                    Chưa thể cập nhật trạng thái thành "Đã trả" vì còn {stats.remainingBooks} sách chưa được trả.
+                                    Vui lòng cập nhật trạng thái từng sách trước.
+                                </div>
+                            )}
+
+                            {newStatus === BORROW_RECORD_STATUS.RETURNED && stats.allReturned && (
+                                <div className="alert alert-success mt-3">
+                                    <i className="fas fa-check-circle me-2"></i>
+                                    Tất cả sách đã được trả. Có thể cập nhật trạng thái phiếu mượn thành "Đã trả".
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                <hr className="my-4" />
+
+                <div className="d-flex justify-content-center gap-2">
+                    <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={props.handleCloseModal}
+                    >
+                        {props.option === "update" ? "Hủy" : "Đóng"}
+                    </button>
+
+                    {props.option === "update" && (
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={submitting}
+                        >
+                            {submitting ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    Đang cập nhật...
+                                </>
+                            ) : (
+                                "Cập nhật phiếu mượn"
+                            )}
+                        </button>
+                    )}
+                </div>
+            </form>
+
+            {/* Dialog to update borrow record detail */}
+            {renderDetailDialog()}
+
+            {/* Add backdrop for modal */}
+            {detailDialogOpen && (
+                <div
+                    className="modal-backdrop fade show"
+                    onClick={handleCloseDetailDialog}
+                    style={{ zIndex: 1040 }}
+                ></div>
+            )}
+        </div>
+    );
+};
