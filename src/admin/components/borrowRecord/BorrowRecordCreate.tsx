@@ -21,6 +21,9 @@ import {
     Select,
     MenuItem,
     Grid,
+    Chip,
+    Card,
+    CardContent,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -28,7 +31,6 @@ import { createBorrowRecord } from '../../../api/BorrowRecordApi';
 import { toast } from 'react-toastify';
 import { endpointBE } from '../../../layouts/utils/Constant';
 import { request } from '../../../api/Request';
-import BookModel from '../../../model/BookModel';
 
 interface BorrowRecordCreateProps {
     handleCloseModal: () => void;
@@ -42,22 +44,39 @@ interface LibraryCard {
     userName: string;
 }
 
-interface CartItem {
+interface BookModel {
+    idBook: number;
+    nameBook: string;
+    author: string;
+    quantityForBorrow: number;
+    thumbnail?: string;
+}
+
+interface BookItemModel {
+    idBookItem: number;
+    barcode: string;
+    status: string;
+    location: string;
+    condition: number;
     book: BookModel;
-    quantity: number;
+}
+
+interface CartItem {
+    bookItem: BookItemModel;
 }
 
 const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModal, setKeyCountReload }) => {
-    const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [libraryCards, setLibraryCards] = useState<LibraryCard[]>([]);
     const [selectedCard, setSelectedCard] = useState<LibraryCard | null>(null);
     const [books, setBooks] = useState<BookModel[]>([]);
+    const [availableBookItems, setAvailableBookItems] = useState<BookItemModel[]>([]);
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [selectedBook, setSelectedBook] = useState<BookModel | null>(null);
-    const [quantity, setQuantity] = useState<number>(1);
+    const [selectedBookItem, setSelectedBookItem] = useState<BookItemModel | null>(null);
     const [notes, setNotes] = useState<string>('');
     const [loadingBooks, setLoadingBooks] = useState(false);
+    const [loadingBookItems, setLoadingBookItems] = useState(false);
     const [loadingCards, setLoadingCards] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -66,17 +85,14 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
         const fetchLibraryCards = async () => {
             setLoadingCards(true);
             try {
-                // Get all library cards that are activated
-                const response = await request(`${endpointBE}/library-cards?projection=full`);
+                const response = await request(`http://localhost:8080/library-cards?projection=full`);
 
                 if (response && response._embedded && response._embedded.libraryCards) {
-                    // Process library cards
                     const activeCards = await Promise.all(
                         response._embedded.libraryCards
-                            .filter((card: any) => card.activated) // Only activated cards
+                            .filter((card: any) => card.activated)
                             .map(async (card: any) => {
                                 try {
-                                    // Get user for each library card
                                     const userdata = await card._embedded.user;
                                     return {
                                         idLibraryCard: card.idLibraryCard,
@@ -113,25 +129,25 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
         const fetchBooks = async () => {
             setLoadingBooks(true);
             try {
-                const response = await request(`${endpointBE}/books?size=1000`);
+                const response = await request(`http://localhost:8080/books?size=1000`);
 
                 if (response && response._embedded && response._embedded.books) {
-                    // Process books to include images
                     const booksWithImages = await Promise.all(
-                        response._embedded.books.map(async (book: BookModel) => {
-                            try {
-                                // Get images for the book
-                                const imagesResponse = await request(`${endpointBE}/books/${book.idBook}/listImages`);
-                                const thumbnail = imagesResponse._embedded.images.find((img: any) => img.thumbnail);
-                                return {
-                                    ...book,
-                                    thumbnail: thumbnail ? thumbnail.urlImage : '',
-                                };
-                            } catch (error) {
-                                console.error(`Error fetching images for book ${book.idBook}:`, error);
-                                return book;
-                            }
-                        })
+                        response._embedded.books
+                            .filter((book: BookModel) => book.quantityForBorrow > 0)
+                            .map(async (book: BookModel) => {
+                                try {
+                                    const imagesResponse = await request(`http://localhost:8080/books/${book.idBook}/listImages`);
+                                    const thumbnail = imagesResponse._embedded.images.find((img: any) => img.thumbnail);
+                                    return {
+                                        ...book,
+                                        thumbnail: thumbnail ? thumbnail.urlImage : '',
+                                    };
+                                } catch (error) {
+                                    console.error(`Error fetching images for book ${book.idBook}:`, error);
+                                    return book;
+                                }
+                            })
                     );
                     setBooks(booksWithImages);
                 }
@@ -146,45 +162,61 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
         fetchBooks();
     }, []);
 
-    const handleAddToCart = () => {
-        if (!selectedBook) {
-            toast.warning('Vui lòng chọn sách');
-            return;
-        }
-
-        if (quantity <= 0) {
-            toast.warning('Số lượng phải lớn hơn 0');
-            return;
-        }
-
-        if (quantity > selectedBook.quantityForBorrow!) {
-            toast.warning(`Chỉ còn ${selectedBook.quantityForBorrow} quyển sách này trong kho`);
-            return;
-        }
-
-        // Check if book already exists in cart
-        const existingItemIndex = cartItems.findIndex(item => item.book.idBook === selectedBook.idBook);
-
-        if (existingItemIndex >= 0) {
-            // Update quantity if book already exists
-            const newCartItems = [...cartItems];
-            const newQuantity = newCartItems[existingItemIndex].quantity + quantity;
-
-            if (newQuantity > selectedBook.quantityForBorrow!) {
-                toast.warning(`Chỉ còn ${selectedBook.quantityForBorrow} quyển sách này trong kho`);
+    // Fetch available book items when a book is selected
+    useEffect(() => {
+        const fetchAvailableBookItems = async () => {
+            if (!selectedBook) {
+                setAvailableBookItems([]);
                 return;
             }
 
-            newCartItems[existingItemIndex].quantity = newQuantity;
-            setCartItems(newCartItems);
-        } else {
-            // Add new book to cart
-            setCartItems([...cartItems, { book: selectedBook, quantity }]);
+            setLoadingBookItems(true);
+            try {
+                const response = await request(`http://localhost:8080/books/${selectedBook.idBook}/listBookItems`);
+
+                if (response && response._embedded && response._embedded.bookItems) {
+                    const availableItems = response._embedded.bookItems.filter((item: any) =>
+                        item.status === 'AVAILABLE' || item.status === 'Có sẵn'
+                    );
+
+                    setAvailableBookItems(availableItems.map((item: any) => ({
+                        idBookItem: item.idBookItem,
+                        barcode: item.barcode,
+                        status: item.status,
+                        location: item.location,
+                        condition: item.condition,
+                        book: selectedBook
+                    })));
+                } else {
+                    setAvailableBookItems([]);
+                }
+            } catch (error) {
+                console.error('Error fetching book items:', error);
+                setAvailableBookItems([]);
+            } finally {
+                setLoadingBookItems(false);
+            }
+        };
+
+        fetchAvailableBookItems();
+    }, [selectedBook]);
+
+    const handleAddToCart = () => {
+        if (!selectedBookItem) {
+            alert('Vui lòng chọn bản sao sách cụ thể');
+            return;
         }
 
-        // Reset selection
+        const existingItem = cartItems.find(item => item.bookItem.idBookItem === selectedBookItem.idBookItem);
+        if (existingItem) {
+            alert('Bản sao sách này đã được thêm vào danh sách mượn');
+            return;
+        }
+
+        setCartItems([...cartItems, { bookItem: selectedBookItem }]);
         setSelectedBook(null);
-        setQuantity(1);
+        setSelectedBookItem(null);
+        setAvailableBookItems([]);
     };
 
     const handleRemoveFromCart = (index: number) => {
@@ -200,358 +232,355 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
 
     const handleSubmit = async () => {
         if (!selectedCard) {
-            toast.warning('Vui lòng chọn thẻ thư viện');
+            alert('Vui lòng chọn thẻ thư viện');
             return;
         }
 
         if (cartItems.length === 0) {
-            toast.warning('Vui lòng thêm ít nhất một quyển sách');
+            alert('Vui lòng thêm ít nhất một bản sao sách');
             return;
         }
 
-        // Validate dates
         if (!borrowDate) {
-            toast.warning('Vui lòng chọn ngày mượn');
+            alert('Vui lòng chọn ngày mượn');
             return;
         }
 
         if (!dueDate) {
-            toast.warning('Vui lòng chọn ngày hẹn trả');
+            alert('Vui lòng chọn ngày hẹn trả');
             return;
         }
 
-        // Check if due date is after borrow date
         if (new Date(dueDate) <= new Date(borrowDate)) {
-            toast.warning('Ngày hẹn trả phải sau ngày mượn');
+            alert('Ngày hẹn trả phải sau ngày mượn');
             return;
         }
 
         setSubmitting(true);
 
         try {
-            // Prepare data for API call
             const borrowRecordData = {
                 idLibraryCard: selectedCard.idLibraryCard,
                 borrowDate: borrowDate,
                 dueDate: dueDate,
                 notes: notes,
-                book: cartItems.map(item => ({
-                    book: {
-                        idBook: item.book.idBook
-                    },
-                    quantity: item.quantity
+                bookItem: cartItems.map(item => ({
+                    idBookItem: item.bookItem.idBookItem
                 }))
             };
 
-            // Make API call
-            await createBorrowRecord(borrowRecordData);
+            const token = localStorage.getItem("token");
+            const response = await fetch('http://localhost:8080/borrow-record/add-borrow-record', {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(borrowRecordData)
+            });
 
-            toast.success('Tạo phiếu mượn thành công');
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Failed to create borrow record");
+            }
 
-            // Reload data in parent component
+            alert('Tạo phiếu mượn thành công');
+
             if (setKeyCountReload) {
                 setKeyCountReload(Math.random());
             }
 
-            // Close modal
             handleCloseModal();
         } catch (error: any) {
             console.error('Error creating borrow record:', error);
-            toast.error(error.message || 'Lỗi khi tạo phiếu mượn');
+            alert(error.message || 'Lỗi khi tạo phiếu mượn');
         } finally {
             setSubmitting(false);
         }
     };
 
     return (
-        <Box className="container bg-white p-4 rounded">
-            <Typography variant="h5" component="h2" className="text-center mb-4">
-                TẠO PHIẾU MƯỢN MỚI
-            </Typography>
+        <div className="container bg-white p-4 rounded">
+            <h2 className="text-center mb-4">TẠO PHIẾU MƯỢN MỚI</h2>
 
             {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
+                <div className="alert alert-danger mb-3">
                     {error}
-                </Alert>
+                </div>
             )}
 
-            <Grid container spacing={3}>
-                <Grid item xs={12}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        Thông tin độc giả
-                    </Typography>
-
-                    <Paper variant="outlined" sx={{ p: 3 }}>
-                        <Autocomplete
-                            id="library-card-select"
-                            options={libraryCards}
-                            getOptionLabel={(option) => `${option.cardNumber} - ${option.userName}`}
-                            loading={loadingCards}
-                            value={selectedCard}
-                            onChange={(event, newValue) => {
-                                setSelectedCard(newValue);
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Chọn thẻ thư viện"
-                                    fullWidth
-                                    required
-                                    InputProps={{
-                                        ...params.InputProps,
-                                        endAdornment: (
-                                            <>
-                                                {loadingCards ? <CircularProgress color="inherit" size={20} /> : null}
-                                                {params.InputProps.endAdornment}
-                                            </>
-                                        ),
-                                    }}
-                                />
-                            )}
-                        />
+            <div className="row">
+                <div className="col-12 mb-4">
+                    <h5 className="mb-2">Thông tin độc giả</h5>
+                    <div className="card p-3">
+                        <div className="mb-3">
+                            <label className="form-label">Chọn thẻ thư viện</label>
+                            <select
+                                className="form-control"
+                                value={selectedCard?.idLibraryCard || ''}
+                                onChange={(e) => {
+                                    const cardId = parseInt(e.target.value);
+                                    const card = libraryCards.find(c => c.idLibraryCard === cardId);
+                                    setSelectedCard(card || null);
+                                }}
+                                disabled={loadingCards}
+                            >
+                                <option value="">-- Chọn thẻ thư viện --</option>
+                                {libraryCards.map(card => (
+                                    <option key={card.idLibraryCard} value={card.idLibraryCard}>
+                                        {card.cardNumber} - {card.userName}
+                                    </option>
+                                ))}
+                            </select>
+                            {loadingCards && <div className="text-muted mt-1">Đang tải...</div>}
+                        </div>
 
                         {selectedCard && (
-                            <Box sx={{ mt: 2 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Thông tin độc giả
-                                </Typography>
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mt: 1 }}>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Mã thẻ
-                                        </Typography>
-                                        <Typography variant="body1" fontWeight="medium">
-                                            {selectedCard.cardNumber}
-                                        </Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Tên độc giả
-                                        </Typography>
-                                        <Typography variant="body1" fontWeight="medium">
-                                            {selectedCard.userName}
-                                        </Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Trạng thái thẻ
-                                        </Typography>
-                                        <Typography variant="body1" fontWeight="medium" color="success.main">
-                                            Đã kích hoạt
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            </Box>
+                            <div className="mt-2">
+                                <h6>Thông tin độc giả</h6>
+                                <div className="row">
+                                    <div className="col-4">
+                                        <small className="text-muted">Mã thẻ</small>
+                                        <div className="fw-bold">{selectedCard.cardNumber}</div>
+                                    </div>
+                                    <div className="col-4">
+                                        <small className="text-muted">Tên độc giả</small>
+                                        <div className="fw-bold">{selectedCard.userName}</div>
+                                    </div>
+                                    <div className="col-4">
+                                        <small className="text-muted">Trạng thái thẻ</small>
+                                        <div className="fw-bold text-success">Đã kích hoạt</div>
+                                    </div>
+                                </div>
+                            </div>
                         )}
-                    </Paper>
-                </Grid>
+                    </div>
+                </div>
 
-                <Grid item xs={12}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        Thêm sách
-                    </Typography>
+                <div className="col-12 mb-4">
+                    <h5 className="mb-2">Chọn sách và bản sao</h5>
+                    <div className="card p-3">
+                        <div className="row">
+                            <div className="col-6">
+                                <label className="form-label">Chọn sách</label>
+                                <select
+                                    className="form-control"
+                                    value={selectedBook?.idBook || ''}
+                                    onChange={(e) => {
+                                        const bookId = parseInt(e.target.value);
+                                        const book = books.find(b => b.idBook === bookId);
+                                        setSelectedBook(book || null);
+                                        setSelectedBookItem(null);
+                                    }}
+                                    disabled={loadingBooks}
+                                >
+                                    <option value="">-- Chọn sách --</option>
+                                    {books.map(book => (
+                                        <option key={book.idBook} value={book.idBook}>
+                                            {book.nameBook} - {book.author} (Còn: {book.quantityForBorrow})
+                                        </option>
+                                    ))}
+                                </select>
+                                {loadingBooks && <div className="text-muted mt-1">Đang tải...</div>}
+                            </div>
 
-                    <Paper variant="outlined" sx={{ p: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                            <Autocomplete
-                                id="book-select"
-                                options={books}
-                                getOptionLabel={(option) => `${option.nameBook} - ${option.author}`}
-                                loading={loadingBooks}
-                                value={selectedBook}
-                                onChange={(event, newValue) => {
-                                    setSelectedBook(newValue);
-                                }}
-                                sx={{ flexGrow: 1 }}
-                                renderOption={(props, option) => (
-                                    <li {...props}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                            {option.thumbnail && (
-                                                <img
-                                                    src={option.thumbnail}
-                                                    alt={option.nameBook}
-                                                    width="40"
-                                                    height="60"
-                                                    style={{ objectFit: 'cover' }}
-                                                />
-                                            )}
-                                            <Box>
-                                                <Typography variant="body1">{option.nameBook}</Typography>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    {option.author} - Còn lại: {option.quantityForBorrow}
-                                                </Typography>
-                                            </Box>
-                                        </Box>
-                                    </li>
-                                )}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Chọn sách"
-                                        fullWidth
-                                        InputProps={{
-                                            ...params.InputProps,
-                                            endAdornment: (
-                                                <>
-                                                    {loadingBooks ? <CircularProgress color="inherit" size={20} /> : null}
-                                                    {params.InputProps.endAdornment}
-                                                </>
-                                            ),
-                                        }}
-                                    />
-                                )}
-                            />
+                            <div className="col-6">
+                                <label className="form-label">Chọn bản sao cụ thể</label>
+                                <select
+                                    className="form-control"
+                                    value={selectedBookItem?.idBookItem || ''}
+                                    onChange={(e) => {
+                                        const itemId = parseInt(e.target.value);
+                                        const item = availableBookItems.find(i => i.idBookItem === itemId);
+                                        setSelectedBookItem(item || null);
+                                    }}
+                                    disabled={!selectedBook || loadingBookItems}
+                                >
+                                    <option value="">-- Chọn bản sao --</option>
+                                    {availableBookItems.map(item => (
+                                        <option key={item.idBookItem} value={item.idBookItem}>
+                                            {item.barcode} - {item.location} (Tình trạng: {item.condition}%)
+                                        </option>
+                                    ))}
+                                </select>
+                                {loadingBookItems && <div className="text-muted mt-1">Đang tải...</div>}
+                            </div>
+                        </div>
 
-                            <TextField
-                                label="Số lượng"
-                                type="number"
-                                value={quantity}
-                                onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                                InputProps={{ inputProps: { min: 1, max: selectedBook?.quantityForBorrow || 1 } }}
-                                sx={{ width: '100px' }}
-                            />
-
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                startIcon={<AddIcon />}
+                        <div className="mt-2 d-flex justify-content-end">
+                            <button
+                                className="btn btn-primary"
                                 onClick={handleAddToCart}
-                                disabled={!selectedBook}
+                                disabled={!selectedBookItem}
                             >
-                                Thêm
-                            </Button>
-                        </Box>
+                                <i className="fas fa-plus me-2"></i>
+                                Thêm vào danh sách mượn
+                            </button>
+                        </div>
 
                         {selectedBook && (
-                            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                                {selectedBook.thumbnail && (
-                                    <img
-                                        src={selectedBook.thumbnail}
-                                        alt={selectedBook.nameBook}
-                                        width="60"
-                                        height="80"
-                                        style={{ objectFit: 'cover' }}
-                                    />
-                                )}
-                                <Box>
-                                    <Typography variant="body1">{selectedBook.nameBook}</Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        Tác giả: {selectedBook.author}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        Số lượng còn lại: {selectedBook.quantityForBorrow}
-                                    </Typography>
-                                </Box>
-                            </Box>
+                            <div className="card mt-2">
+                                <div className="card-body">
+                                    <div className="d-flex align-items-center">
+                                        {selectedBook.thumbnail && (
+                                            <img
+                                                src={selectedBook.thumbnail}
+                                                alt={selectedBook.nameBook}
+                                                width="60"
+                                                height="80"
+                                                style={{ objectFit: 'cover' }}
+                                                className="me-3"
+                                            />
+                                        )}
+                                        <div>
+                                            <h6 className="fw-bold">{selectedBook.nameBook}</h6>
+                                            <div className="text-muted">Tác giả: {selectedBook.author}</div>
+                                            <div className="text-muted">Số lượng còn lại: {selectedBook.quantityForBorrow}</div>
+                                            <div className="text-muted">Bản sao có sẵn: {availableBookItems.length}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         )}
-                    </Paper>
-                </Grid>
+                    </div>
+                </div>
 
-                <Grid item xs={12}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        Danh sách sách mượn {cartItems.length > 0 && `(${cartItems.length} đầu sách)`}
-                    </Typography>
+                <div className="col-12 mb-4">
+                    <h5 className="mb-2">
+                        Danh sách sách mượn {cartItems.length > 0 && `(${cartItems.length} bản sao)`}
+                    </h5>
 
-                    <TableContainer component={Paper} variant="outlined">
-                        <Table>
-                            <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
-                                <TableRow>
-                                    <TableCell width="60">STT</TableCell>
-                                    <TableCell>Sách</TableCell>
-                                    <TableCell align="center">Số lượng</TableCell>
-                                    <TableCell align="center" width="100">Thao tác</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
+                    <div className="card">
+                        <div className="table-responsive">
+                            <table className="table table-striped mb-0">
+                                <thead style={{ backgroundColor: "#f5f5f5" }}>
+                                <tr>
+                                    <th width="60">STT</th>
+                                    <th>Sách</th>
+                                    <th>Mã vạch</th>
+                                    <th>Vị trí</th>
+                                    <th>Tình trạng</th>
+                                    <th width="100" className="text-center">Thao tác</th>
+                                </tr>
+                                </thead>
+                                <tbody>
                                 {cartItems.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                                            <Typography variant="body1" color="text.secondary">
-                                                Chưa có sách nào được thêm
-                                            </Typography>
-                                        </TableCell>
-                                    </TableRow>
+                                    <tr>
+                                        <td colSpan={6} className="text-center py-3">
+                                            <div className="text-muted">Chưa có sách nào được thêm</div>
+                                        </td>
+                                    </tr>
                                 ) : (
                                     cartItems.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{index + 1}</TableCell>
-                                            <TableCell>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                                    {item.book.thumbnail && (
+                                        <tr key={index}>
+                                            <td>{index + 1}</td>
+                                            <td>
+                                                <div className="d-flex align-items-center">
+                                                    {item.bookItem.book.thumbnail && (
                                                         <img
-                                                            src={item.book.thumbnail}
-                                                            alt={item.book.nameBook}
+                                                            src={item.bookItem.book.thumbnail}
+                                                            alt={item.bookItem.book.nameBook}
                                                             width="40"
                                                             height="60"
                                                             style={{ objectFit: 'cover' }}
+                                                            className="me-2"
                                                         />
                                                     )}
-                                                    <Box>
-                                                        <Typography variant="body1">{item.book.nameBook}</Typography>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            {item.book.author}
-                                                        </Typography>
-                                                    </Box>
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell align="center">{item.quantity}</TableCell>
-                                            <TableCell align="center">
-                                                <IconButton
-                                                    color="error"
+                                                    <div>
+                                                        <div>{item.bookItem.book.nameBook}</div>
+                                                        <small className="text-muted">{item.bookItem.book.author}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className="badge bg-outline-secondary">{item.bookItem.barcode}</span>
+                                            </td>
+                                            <td>{item.bookItem.location}</td>
+                                            <td>
+                                                    <span className={`badge ${item.bookItem.condition >= 80 ? "bg-success" : item.bookItem.condition >= 60 ? "bg-warning" : "bg-danger"}`}>
+                                                        {item.bookItem.condition}%
+                                                    </span>
+                                            </td>
+                                            <td className="text-center">
+                                                <button
+                                                    className="btn btn-sm btn-outline-danger"
                                                     onClick={() => handleRemoveFromCart(index)}
-                                                    size="small"
                                                 >
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </TableCell>
-                                        </TableRow>
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
                                     ))
                                 )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </Grid>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
 
-                <Grid item xs={12}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        Ghi chú
-                    </Typography>
+                <div className="col-12 mb-4">
+                    <h5 className="mb-2">Thông tin mượn sách</h5>
+                    <div className="card p-3">
+                        <div className="row">
+                            <div className="col-6">
+                                <label className="form-label">Ngày mượn</label>
+                                <input
+                                    type="date"
+                                    className="form-control"
+                                    value={borrowDate}
+                                    onChange={(e) => setBorrowDate(e.target.value)}
+                                />
+                            </div>
+                            <div className="col-6">
+                                <label className="form-label">Ngày hẹn trả</label>
+                                <input
+                                    type="date"
+                                    className="form-control"
+                                    value={dueDate}
+                                    onChange={(e) => setDueDate(e.target.value)}
+                                />
+                            </div>
+                            <div className="col-12 mt-3">
+                                <label className="form-label">Ghi chú phiếu mượn</label>
+                                <textarea
+                                    className="form-control"
+                                    rows={3}
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    placeholder="Nhập ghi chú..."
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                    <Paper variant="outlined" sx={{ p: 3 }}>
-                        <TextField
-                            label="Ghi chú phiếu mượn"
-                            multiline
-                            rows={3}
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            fullWidth
-                        />
-                    </Paper>
-                </Grid>
-            </Grid>
+            <hr className="my-3" />
 
-            <Divider sx={{ my: 3 }} />
-
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-                <Button
-                    variant="outlined"
-                    color="error"
+            <div className="d-flex justify-content-center gap-2">
+                <button
+                    className="btn btn-outline-danger"
                     onClick={handleCloseModal}
                 >
                     Hủy
-                </Button>
+                </button>
 
-                <Button
-                    variant="contained"
-                    color="primary"
+                <button
+                    className="btn btn-primary"
                     onClick={handleSubmit}
                     disabled={submitting || !selectedCard || cartItems.length === 0}
-                    startIcon={submitting ? <CircularProgress size={20} /> : null}
                 >
-                    {submitting ? "Đang xử lý..." : "Tạo phiếu mượn"}
-                </Button>
-            </Box>
-        </Box>
+                    {submitting ? (
+                        <>
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Đang xử lý...
+                        </>
+                    ) : (
+                        "Tạo phiếu mượn"
+                    )}
+                </button>
+            </div>
+        </div>
     );
 };
 

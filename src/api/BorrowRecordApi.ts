@@ -24,10 +24,17 @@ export type BorrowRecordDetail = {
     isReturned: boolean;
     returnDate?: string;
     notes?: string;
-    book: {
-        idBook: number;
-        nameBook: string;
-        author: string;
+    bookItem: {
+        idBookItem: number;
+        barcode: string;
+        status: string;
+        location: string;
+        condition: number;
+        book: {
+            idBook: number;
+            nameBook: string;
+            author: string;
+        };
     };
 };
 
@@ -35,7 +42,7 @@ export interface UpdateBorrowRecordParams {
     idBorrowRecord: number;
     status: string;
     notes?: string;
-    code?: string; // New parameter for violation code
+    code?: string;
 }
 
 // Add a new interface for violation types
@@ -51,6 +58,7 @@ export type UpdateBookReturnParams = {
     isReturned: boolean;
     returnDate: string | null;
     notes: string;
+    code?: string; // Thêm mã vi phạm
 };
 
 // Status constants
@@ -61,6 +69,7 @@ export const BORROW_RECORD_STATUS = {
     RETURNED: "Đã trả",
     CANCELLED: "Hủy"
 };
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
 
 /**
@@ -154,23 +163,25 @@ class BorrowRecordApi {
             const violationTypes = responseData._embedded?.libraryViolationTypes || [];
 
             return violationTypes.map((type: any) => ({
-                id: type.id,
+                id: type.idLibraryViolationType,
                 code: type.code,
                 name: type.name,
                 description: type.description || '',
+                fine: type.fine || 0,
             }));
         } catch (error) {
             console.error("Error in fetchViolationTypes:", error);
             throw error;
         }
     }
+
     /**
      * Fetch all borrow records
      */
     public async fetchAllBorrowRecords(): Promise<BorrowRecord[]> {
         try {
             let allRecords: any[] = [];
-            let nextUrl = `${API_BASE_URL}/borrow-records?size=100&sort=id,desc`; // size lớn hơn 20
+            let nextUrl = `${API_BASE_URL}/borrow-records?size=100&sort=id,desc`;
 
             // Duyệt qua tất cả các trang
             while (nextUrl) {
@@ -223,7 +234,6 @@ class BorrowRecordApi {
             throw error;
         }
     }
-
 
     /**
      * Fetch a specific borrow record by ID
@@ -290,34 +300,51 @@ class BorrowRecordApi {
             const detailsData = await response.json();
             const detailsList = detailsData._embedded?.borrowRecordDetails || [];
 
-            // Process the details and include book info
+            // Process the details and include book item info
             const processedDetails = await Promise.all(
                 detailsList.map(async (detail: any) => {
-                    let book = {
-                        idBook: 0,
-                        nameBook: "Unknown",
-                        author: "Unknown",
+                    let bookItem = {
+                        idBookItem: 0,
+                        barcode: "Unknown",
+                        status: "Unknown",
+                        location: "Unknown",
+                        condition: 0,
+                        book: {
+                            idBook: 0,
+                            nameBook: "Unknown",
+                            author: "Unknown",
+                        }
                     };
 
                     try {
-                        // Get book info
-                        const bookData = await this.fetchLinkedResource(detail._links.book.href);
-                        book = {
-                            idBook: bookData.idBook,
-                            nameBook: bookData.nameBook,
-                            author: bookData.author
+                        // Get book item info
+                        const bookItemData = await this.fetchLinkedResource(detail._links.bookItem.href);
+                        // Get book info from book item
+                        const bookData = await this.fetchLinkedResource(bookItemData._links.book.href);
+
+                        bookItem = {
+                            idBookItem: bookItemData.idBookItem,
+                            barcode: bookItemData.barcode,
+                            status: bookItemData.status,
+                            location: bookItemData.location,
+                            condition: bookItemData.condition,
+                            book: {
+                                idBook: bookData.idBook,
+                                nameBook: bookData.nameBook,
+                                author: bookData.author
+                            }
                         };
                     } catch (error) {
-                        console.error("Error fetching book info:", error);
+                        console.error("Error fetching book item info:", error);
                     }
 
                     return {
                         id: detail.id,
                         quantity: detail.quantity,
-                        isReturned: detail.returned,
+                        isReturned: detail.isReturned || detail.returned,
                         returnDate: detail.returnDate,
                         notes: detail.notes,
-                        book,
+                        bookItem,
                     };
                 })
             );
@@ -345,14 +372,11 @@ class BorrowRecordApi {
     }
 
     /**
-     * Update borrow record status and notes
-     */
-    /**
      * Update borrow record status, notes, and violation code
      */
     public async updateBorrowRecord(params: UpdateBorrowRecordParams): Promise<void> {
         try {
-            // Prepare the request body, including the code parameter if it's provided
+            // Prepare the request body
             const requestBody: any = {
                 idBorrowRecord: params.idBorrowRecord,
                 status: params.status,
@@ -421,6 +445,7 @@ class BorrowRecordApi {
 }
 
 export default new BorrowRecordApi();
+
 // Function to create a new borrow record
 export async function createBorrowRecord(borrowRecordData: any): Promise<any> {
     const token = localStorage.getItem("token");
@@ -494,22 +519,27 @@ export async function getBorrowRecordDetails(borrowRecordId: number): Promise<Bo
     try {
         const response = await request(`${endpointBE}/borrow-records/${borrowRecordId}/borrowRecordDetails`);
 
-        // Fetch book details for each borrow record detail
-        const detailsWithBooks = await Promise.all(
+        // Fetch book item details for each borrow record detail
+        const detailsWithBookItems = await Promise.all(
             response._embedded?.borrowRecordDetails.map(async (detail: any) => {
-                const bookResponse = await request(detail._links.book.href);
+                const bookItemResponse = await request(detail._links.bookItem.href);
+                const bookResponse = await request(bookItemResponse._links.book.href);
+
                 return {
                     id: detail.id,
                     quantity: detail.quantity,
-                    isReturned: detail.isReturned,
+                    isReturned: detail.isReturned || detail.returned,
                     returnDate: detail.returnDate,
                     notes: detail.notes,
-                    book: bookResponse
+                    bookItem: {
+                        ...bookItemResponse,
+                        book: bookResponse
+                    }
                 };
             }) || []
         );
 
-        return detailsWithBooks;
+        return detailsWithBookItems;
     } catch (error) {
         console.error("Error fetching borrow record details:", error);
         throw error;

@@ -26,17 +26,17 @@ import {
     IconButton,
     Switch,
     FormControlLabel,
-} from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import { toast } from "react-toastify";
-import { StepperComponent } from "../../../layouts/utils/StepperComponent";
+} from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import { toast } from 'react-toastify';
+import { StepperComponent } from '../../../layouts/utils/StepperComponent';
 import BorrowRecordApi, {
     BorrowRecord,
     BorrowRecordDetail,
     BORROW_RECORD_STATUS,
     UpdateBorrowRecordParams,
     UpdateBookReturnParams
-} from "../../../api/BorrowRecordApi";
+} from '../../../api/BorrowRecordApi';
 
 // Define a new interface for violation types
 interface ViolationType {
@@ -74,6 +74,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
     const [updatedIsReturned, setUpdatedIsReturned] = useState(false);
     const [updatedReturnDate, setUpdatedReturnDate] = useState<string>("");
     const [updatedNotes, setUpdatedNotes] = useState("");
+    const [updatedViolationCode, setUpdatedViolationCode] = useState<string>("");
     const [updatingDetail, setUpdatingDetail] = useState(false);
 
     useEffect(() => {
@@ -116,7 +117,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
             } catch (error) {
                 console.error("Error:", error);
-                toast.error("Failed to load borrow record");
+                alert("Failed to load borrow record");
             } finally {
                 setLoading(false);
             }
@@ -134,7 +135,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
             const allBooksReturned = details.every(detail => detail.isReturned);
 
             if (!allBooksReturned) {
-                toast.warning("Không thể cập nhật trạng thái phiếu mượn thành 'Đã trả' vì còn sách chưa được trả!");
+                alert("Không thể cập nhật trạng thái phiếu mượn thành 'Đã trả' vì còn sách chưa được trả!");
                 return;
             }
 
@@ -160,6 +161,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
         setUpdatedIsReturned(detail.isReturned);
         setUpdatedReturnDate(BorrowRecordApi.formatDateForInput(detail.returnDate));
         setUpdatedNotes(detail.notes || "");
+        setUpdatedViolationCode("");
         setDetailDialogOpen(true);
     };
 
@@ -185,13 +187,14 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                 isReturned: updatedIsReturned,
                 returnDate: effectiveReturnDate,
                 notes: updatedNotes,
+                code: updatedViolationCode || "Không vi phạm", // Default to no violation
             };
 
             await BorrowRecordApi.updateBookReturnStatus(updateParams);
 
-            toast.success("Cập nhật chi tiết phiếu mượn thành công");
+            alert("Cập nhật chi tiết phiếu mượn thành công");
 
-            // List after updating status
+            // Update local state
             const updatedDetails = details.map(detail =>
                 detail.id === selectedDetail.id
                     ? {
@@ -208,28 +211,17 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
             const isAllReturnedNow = updatedDetails.every(detail => detail.isReturned);
 
             // Update state
-            setDetails(details.map(detail =>
-                detail.id === selectedDetail.id
-                    ? {
-                        ...detail,
-                        isReturned: updatedIsReturned,
-                        returnDate: updatedIsReturned
-                            ? (effectiveReturnDate ?? undefined)
-                            : undefined,
-                        notes: updatedNotes
-                    }
-                    : detail
-            ));
+            setDetails(updatedDetails);
 
             // Notify if all books have been returned
             if (isAllReturnedNow && !wasAllReturnedBefore) {
-                toast.info("Tất cả sách đã được trả. Bạn có thể cập nhật trạng thái phiếu mượn thành 'Đã trả'.");
+                alert("Tất cả sách đã được trả. Bạn có thể cập nhật trạng thái phiếu mượn thành 'Đã trả'.");
             }
 
             handleCloseDetailDialog();
         } catch (error) {
             console.error("Error updating borrow record detail:", error);
-            toast.error((error as Error).message || "Failed to update borrow record detail");
+            alert((error as Error).message || "Failed to update borrow record detail");
         } finally {
             setUpdatingDetail(false);
         }
@@ -244,19 +236,19 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
         }
 
         if (!record) {
-            toast.error("No record data available");
+            alert("No record data available");
             return;
         }
 
         // Check if status is "Returned" but not all books have been returned
         if (newStatus === BORROW_RECORD_STATUS.RETURNED && !details.every(detail => detail.isReturned)) {
-            toast.error("Không thể cập nhật trạng thái phiếu mượn thành 'Đã trả' vì còn sách chưa được trả!");
+            alert("Không thể cập nhật trạng thái phiếu mượn thành 'Đã trả' vì còn sách chưa được trả!");
             return;
         }
 
         // Check if violation type is selected when status is "Returned"
         if (newStatus === BORROW_RECORD_STATUS.RETURNED && !selectedViolationType) {
-            toast.warning("Vui lòng chọn loại vi phạm (hoặc 'Không vi phạm' nếu không có)");
+            alert("Vui lòng chọn loại vi phạm (hoặc 'Không vi phạm' nếu không có)");
             return;
         }
 
@@ -272,7 +264,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
             await BorrowRecordApi.updateBorrowRecord(updateParams);
 
-            toast.success("Cập nhật phiếu mượn thành công");
+            alert("Cập nhật phiếu mượn thành công");
 
             if (props.setKeyCountReload) {
                 props.setKeyCountReload(Math.random());
@@ -281,7 +273,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
             props.handleCloseModal();
         } catch (error) {
             console.error("Error updating borrow record:", error);
-            toast.error((error as Error).message || "Failed to update borrow record");
+            alert((error as Error).message || "Failed to update borrow record");
         } finally {
             setSubmitting(false);
         }
@@ -292,95 +284,125 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
         if (!selectedDetail) return null;
 
         return (
-            <Dialog
-                open={detailDialogOpen}
-                onClose={handleCloseDetailDialog}
-                maxWidth="sm"
-                fullWidth
-            >
-                <DialogTitle>
-                    Cập nhật trạng thái sách
-                </DialogTitle>
-                <DialogContent>
-                    <Box sx={{ mb: 3, mt: 1 }}>
-                        <Typography variant="subtitle1" fontWeight="bold">
-                            {selectedDetail.book.nameBook}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Tác giả: {selectedDetail.book.author}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Số lượng: {selectedDetail.quantity}
-                        </Typography>
-                    </Box>
+            <div className={`modal fade ${detailDialogOpen ? 'show' : ''}`}
+                 style={{ display: detailDialogOpen ? 'block' : 'none' }}
+                 tabIndex={-1}>
+                <div className="modal-dialog">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h5 className="modal-title">Cập nhật trạng thái sách</h5>
+                            <button
+                                type="button"
+                                className="btn-close"
+                                onClick={handleCloseDetailDialog}
+                            ></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="mb-3">
+                                <h6>{selectedDetail.bookItem.book.nameBook}</h6>
+                                <div className="text-muted">Tác giả: {selectedDetail.bookItem.book.author}</div>
+                                <div className="text-muted">Mã vạch: {selectedDetail.bookItem.barcode}</div>
+                                <div className="text-muted">Vị trí: {selectedDetail.bookItem.location}</div>
+                            </div>
 
-                    <FormControlLabel
-                        control={
-                            <Switch
-                                checked={updatedIsReturned}
-                                onChange={(e) => setUpdatedIsReturned(e.target.checked)}
-                                color="primary"
-                            />
-                        }
-                        label="Đã trả sách"
-                        sx={{ mb: 2 }}
-                    />
+                            <div className="form-check form-switch mb-3">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={updatedIsReturned}
+                                    onChange={(e) => setUpdatedIsReturned(e.target.checked)}
+                                />
+                                <label className="form-check-label">
+                                    Đã trả sách
+                                </label>
+                            </div>
 
-                    {updatedIsReturned && (
-                        <TextField
-                            label="Ngày trả"
-                            type="date"
-                            value={updatedReturnDate}
-                            onChange={(e) => setUpdatedReturnDate(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                            fullWidth
-                            margin="normal"
-                        />
-                    )}
+                            {updatedIsReturned && (
+                                <div className="mb-3">
+                                    <label className="form-label">Ngày trả</label>
+                                    <input
+                                        type="date"
+                                        className="form-control"
+                                        value={updatedReturnDate}
+                                        onChange={(e) => setUpdatedReturnDate(e.target.value)}
+                                    />
+                                </div>
+                            )}
 
-                    <TextField
-                        label="Ghi chú"
-                        multiline
-                        rows={3}
-                        value={updatedNotes}
-                        onChange={(e) => setUpdatedNotes(e.target.value)}
-                        fullWidth
-                        margin="normal"
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCloseDetailDialog} color="inherit">
-                        Hủy
-                    </Button>
-                    <Button
-                        onClick={handleUpdateDetail}
-                        color="primary"
-                        variant="contained"
-                        disabled={updatingDetail}
-                        startIcon={updatingDetail ? <CircularProgress size={20} /> : null}
-                    >
-                        {updatingDetail ? "Đang cập nhật..." : "Cập nhật"}
-                    </Button>
-                </DialogActions>
-            </Dialog>
+                            {updatedIsReturned && (
+                                <div className="mb-3">
+                                    <label className="form-label">Loại vi phạm</label>
+                                    <select
+                                        className="form-control"
+                                        value={updatedViolationCode}
+                                        onChange={(e) => setUpdatedViolationCode(e.target.value)}
+                                    >
+                                        <option value="">Chọn loại vi phạm</option>
+                                        <option value="Không vi phạm">Không vi phạm</option>
+                                        {violationTypes.map((type) => (
+                                            <option key={type.code} value={type.code}>
+                                                {type.code} - {type.description}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className="mb-3">
+                                <label className="form-label">Ghi chú</label>
+                                <textarea
+                                    className="form-control"
+                                    rows={3}
+                                    value={updatedNotes}
+                                    onChange={(e) => setUpdatedNotes(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={handleCloseDetailDialog}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={handleUpdateDetail}
+                                disabled={updatingDetail}
+                            >
+                                {updatingDetail ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2"></span>
+                                        Đang cập nhật...
+                                    </>
+                                ) : (
+                                    "Cập nhật"
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         );
     };
 
     if (loading) {
         return (
-            <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-                <CircularProgress />
-            </Box>
+            <div className="d-flex justify-content-center p-4">
+                <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                </div>
+            </div>
         );
     }
 
     if (!record) {
         return (
-            <Box sx={{ p: 4 }}>
-                <Typography variant="h6" color="error">
-                    Failed to load borrow record
-                </Typography>
-            </Box>
+            <div className="p-4">
+                <h6 className="text-danger">Failed to load borrow record</h6>
+            </div>
         );
     }
 
@@ -389,292 +411,57 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
     return (
         <div className="container bg-white p-4 rounded">
-            <Typography variant="h5" component="h2" className="text-center mb-4">
+            <h2 className="text-center mb-4">
                 {props.option === "update" ? "CẬP NHẬT PHIẾU MƯỢN" : "CHI TIẾT PHIẾU MƯỢN"}
-            </Typography>
+            </h2>
 
             <form onSubmit={handleSubmit}>
-                <Box sx={{ mb: 4 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                        <Typography variant="subtitle1" sx={{ mr: 2 }}>
-                            Trạng thái hiện tại:
-                        </Typography>
-                        <Chip
-                            label={record.status}
-                            color={BorrowRecordApi.getStatusColor(record.status) as any}
-                            variant="outlined"
-                        />
-                    </Box>
-    
-                    {/*<StepperComponent steps={steps} activeStep={activeStep} />*/}
-                </Box>
+                <div className="mb-4">
+                    <div className="d-flex align-items-center mb-2">
+                        <span className="me-2">Trạng thái hiện tại:</span>
+                        <span className={`badge ${BorrowRecordApi.getStatusColor(record.status) === 'success' ? 'bg-success' :
+                            BorrowRecordApi.getStatusColor(record.status) === 'warning' ? 'bg-warning' :
+                                BorrowRecordApi.getStatusColor(record.status) === 'info' ? 'bg-info' :
+                                    BorrowRecordApi.getStatusColor(record.status) === 'error' ? 'bg-danger' : 'bg-secondary'}`}>
+                            {record.status}
+                        </span>
+                    </div>
+                </div>
 
-                <Box sx={{ mb: 4 }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        Thông tin phiếu mượn
-                    </Typography>
+                <div className="mb-4">
+                    <h5 className="mb-2">Thông tin phiếu mượn</h5>
+                    <div className="card p-3">
+                        <div className="row">
+                            <div className="col-md-4 mb-2">
+                                <small className="text-muted">Mã phiếu</small>
+                                <div className="fw-bold">{record.id}</div>
+                            </div>
+                            <div className="col-md-4 mb-2">
+                                <small className="text-muted">Tên độc giả</small>
+                                <div className="fw-bold">{record.userName}</div>
+                            </div>
+                            <div className="col-md-4 mb-2">
+                                <small className="text-muted">Mã thẻ thư viện</small>
+                                <div className="fw-bold">{record.cardNumber}</div>
+                            </div>
+                            <div className="col-md-4 mb-2">
+                                <small className="text-muted">Ngày mượn</small>
+                                <div className="fw-bold">{BorrowRecordApi.formatDate(record.borrowDate)}</div>
+                            </div>
+                            <div className="col-md-4 mb-2">
+                                <small className="text-muted">Ngày hẹn trả</small>
+                                <div className="fw-bold">{BorrowRecordApi.formatDate(record.dueDate)}</div>
+                            </div>
+                            <div className="col-md-4 mb-2">
+                                <small className="text-muted">Ngày trả</small>
+                                <div className="fw-bold">{BorrowRecordApi.formatDate(record.returnDate)}</div>
+                            </div>
+                        </div>
+                        <div className="mt-3">
+                            <small className="text-muted">Ghi chú</small>
+                            <div>{record.notes || "—"}</div>
+                        </div>
+                    </div>
+                </div>
 
-                    <Paper variant="outlined" sx={{ p: 3 }}>
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                            <Box sx={{ minWidth: 200 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Mã phiếu
-                                </Typography>
-                                <Typography variant="body1">{record.id}</Typography>
-                            </Box>
-
-                            <Box sx={{ minWidth: 200 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Tên độc giả
-                                </Typography>
-                                <Typography variant="body1">{record.userName}</Typography>
-                            </Box>
-
-                            <Box sx={{ minWidth: 200 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Mã thẻ thư viện
-                                </Typography>
-                                <Typography variant="body1">{record.cardNumber}</Typography>
-                            </Box>
-
-                            <Box sx={{ minWidth: 200 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Ngày mượn
-                                </Typography>
-                                <Typography variant="body1">{BorrowRecordApi.formatDate(record.borrowDate)}</Typography>
-                            </Box>
-
-                            <Box sx={{ minWidth: 200 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Ngày hẹn trả
-                                </Typography>
-                                <Typography variant="body1">{BorrowRecordApi.formatDate(record.dueDate)}</Typography>
-                            </Box>
-
-                            <Box sx={{ minWidth: 200 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Ngày trả
-                                </Typography>
-                                <Typography variant="body1">{BorrowRecordApi.formatDate(record.returnDate)}</Typography>
-                            </Box>
-                        </Box>
-
-                        <Box sx={{ mt: 3 }}>
-                            <Typography variant="subtitle2" color="text.secondary">
-                                Ghi chú
-                            </Typography>
-                            <Typography variant="body1">{record.notes || "—"}</Typography>
-                        </Box>
-                    </Paper>
-                </Box>
-
-                <Box sx={{ mb: 4 }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        Thống kê
-                    </Typography>
-
-                    <Paper variant="outlined" sx={{ p: 3 }}>
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                            <Box>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Tổng số đầu sách
-                                </Typography>
-                                <Typography variant="body1" fontWeight="bold">
-                                    {stats.totalTitles}
-                                </Typography>
-                            </Box>
-
-                            <Box>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Tổng số sách
-                                </Typography>
-                                <Typography variant="body1" fontWeight="bold">
-                                    {stats.totalBooks}
-                                </Typography>
-                            </Box>
-
-                            <Box>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Số sách đã trả
-                                </Typography>
-                                <Typography variant="body1" fontWeight="bold">
-                                    {stats.returnedBooks}
-                                </Typography>
-                            </Box>
-
-                            <Box>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Số sách chưa trả
-                                </Typography>
-                                <Typography variant="body1" fontWeight="bold">
-                                    {stats.remainingBooks}
-                                </Typography>
-                            </Box>
-                        </Box>
-                    </Paper>
-                </Box>
-
-                <Box sx={{ mb: 4 }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        Danh sách sách mượn
-                    </Typography>
-
-                    <TableContainer component={Paper} variant="outlined">
-                        <Table>
-                            <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
-                                <TableRow>
-                                    <TableCell>Sách</TableCell>
-                                    <TableCell align="center">Số lượng</TableCell>
-                                    <TableCell align="center">Trạng thái</TableCell>
-                                    <TableCell align="center">Ngày trả</TableCell>
-                                    <TableCell>Ghi chú</TableCell>
-                                    {props.option === "update" && (
-                                        <TableCell align="center">Thao tác</TableCell>
-                                    )}
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {details.map((detail) => (
-                                    <TableRow key={detail.id}>
-                                        <TableCell>
-                                            <Box sx={{ display: "flex", alignItems: "center" }}>
-                                                <Box>
-                                                    <Typography variant="body1">{detail.book.nameBook}</Typography>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        {detail.book.author}
-                                                    </Typography>
-                                                </Box>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell align="center">{detail.quantity}</TableCell>
-                                        <TableCell align="center">
-                                            <Chip
-                                                label={detail.isReturned ? "Đã trả" : "Chưa trả"}
-                                                color={detail.isReturned ? "success" : "warning"}
-                                                variant="outlined"
-                                                size="small"
-                                            />
-                                        </TableCell>
-                                        <TableCell align="center">{BorrowRecordApi.formatDate(detail.returnDate)}</TableCell>
-                                        <TableCell>{detail.notes || "—"}</TableCell>
-                                        {props.option === "update" && (
-                                            <TableCell align="center">
-                                                <IconButton
-                                                    color="primary"
-                                                    onClick={() => handleOpenDetailDialog(detail)}
-                                                    size="small"
-                                                >
-                                                    <EditIcon />
-                                                </IconButton>
-                                            </TableCell>
-                                        )}
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </Box>
-
-                {props.option === "update" && (
-                    <Box sx={{ mb: 4 }}>
-                        <Typography variant="h6" sx={{ mb: 2 }}>
-                            Cập nhật trạng thái phiếu mượn
-                        </Typography>
-
-                        <Paper variant="outlined" sx={{ p: 3 }}>
-                            <FormControl fullWidth sx={{ mb: 3 }}>
-                                <InputLabel id="status-select-label">Trạng thái mới</InputLabel>
-                                <Select
-                                    labelId="status-select-label"
-                                    value={newStatus}
-                                    label="Trạng thái mới"
-                                    onChange={handleStatusChange}
-                                >
-                                    <MenuItem value={BORROW_RECORD_STATUS.PROCESSING}>Đang xử lý</MenuItem>
-                                    <MenuItem value={BORROW_RECORD_STATUS.APPROVED}>Đã duyệt</MenuItem>
-                                    <MenuItem value={BORROW_RECORD_STATUS.BORROWING}>Đang mượn</MenuItem>
-                                    <MenuItem value={BORROW_RECORD_STATUS.RETURNED} disabled={!details.every(detail => detail.isReturned)}>
-                                        Đã trả {!details.every(detail => detail.isReturned) && "(Cần trả hết sách)"}
-                                    </MenuItem>
-                                    <MenuItem value={BORROW_RECORD_STATUS.CANCELLED}>Hủy</MenuItem>
-                                </Select>
-                            </FormControl>
-
-                            {/* Show violation type selector when status is "Returned" */}
-                            {showViolationSelect && (
-                                <FormControl fullWidth sx={{ mb: 3 }}>
-                                    <InputLabel id="violation-type-select-label">Loại vi phạm</InputLabel>
-                                    <Select
-                                        labelId="violation-type-select-label"
-                                        value={selectedViolationType}
-                                        label="Loại vi phạm"
-                                        onChange={handleViolationTypeChange}
-                                        required
-                                    >
-                                        <MenuItem value="">
-                                            <em>Chọn loại vi phạm</em>
-                                        </MenuItem>
-                                        <MenuItem value="Không vi phạm">Không vi phạm</MenuItem>
-                                        {violationTypes.map((type) => (
-                                            <MenuItem key={type.code} value={type.code}>
-                                                {type.code}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            )}
-
-                            {newStatus === BORROW_RECORD_STATUS.RETURNED && !details.every(detail => detail.isReturned) && (
-                                <Box sx={{ mb: 2, p: 2, bgcolor: "#fff3e0", borderRadius: 1 }}>
-                                    <Typography variant="body2" color="warning.dark">
-                                        <b>Lưu ý:</b> Không thể cập nhật trạng thái phiếu mượn thành "Đã trả" vì còn {stats.remainingBooks} sách chưa được trả.
-                                        Vui lòng cập nhật trạng thái cho tất cả các sách trước.
-                                    </Typography>
-                                </Box>
-                            )}
-
-                            <FormControl fullWidth>
-                                <TextField
-                                    label="Ghi chú"
-                                    multiline
-                                    rows={3}
-                                    value={newNotes}
-                                    onChange={(e) => setNewNotes(e.target.value)}
-                                />
-                            </FormControl>
-                        </Paper>
-                    </Box>
-                )}
-
-                <Divider sx={{ my: 3 }} />
-
-                <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-                    <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={props.handleCloseModal}
-                    >
-                        Đóng
-                    </Button>
-
-                    {props.option === "update" && (
-                        <Button
-                            type="submit"
-                            variant="contained"
-                            color="primary"
-                            disabled={submitting ||
-                                (newStatus === BORROW_RECORD_STATUS.RETURNED && !details.every(detail => detail.isReturned)) ||
-                                (newStatus === BORROW_RECORD_STATUS.RETURNED && !selectedViolationType)}
-                            startIcon={submitting ? <CircularProgress size={20} /> : null}
-                        >
-                            {submitting ? "Đang cập nhật..." : "Cập nhật"}
-                        </Button>
-                    )}
-                </Box>
-            </form>
-
-            {/* Dialog to update borrow record detail */}
-            {renderDetailDialog()}
-        </div>
-    );
-};
+                <div className="mb-4">
