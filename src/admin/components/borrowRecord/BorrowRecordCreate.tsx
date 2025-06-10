@@ -1,35 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Box,
-    Button,
-    TextField,
-    Typography,
-    Paper,
-    Autocomplete,
-    CircularProgress,
-    TableContainer,
-    Table,
-    TableHead,
-    TableRow,
-    TableCell,
-    TableBody,
-    IconButton,
-    Divider,
-    Alert,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Grid,
-    Chip,
-    Card,
-    CardContent,
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import { createBorrowRecord } from '../../../api/BorrowRecordApi';
-import { toast } from 'react-toastify';
-import { endpointBE } from '../../../layouts/utils/Constant';
 import { request } from '../../../api/Request';
 
 interface BorrowRecordCreateProps {
@@ -49,6 +18,7 @@ interface BookModel {
     nameBook: string;
     author: string;
     quantityForBorrow: number;
+    isbn: string
     thumbnail?: string;
 }
 
@@ -328,7 +298,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                 <option value="">-- Chọn thẻ thư viện --</option>
                                 {libraryCards.map(card => (
                                     <option key={card.idLibraryCard} value={card.idLibraryCard}>
-                                        {card.cardNumber} - {card.userName}
+                                        {card.cardNumber}
                                     </option>
                                 ))}
                             </select>
@@ -377,7 +347,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                     <option value="">-- Chọn sách --</option>
                                     {books.map(book => (
                                         <option key={book.idBook} value={book.idBook}>
-                                            {book.nameBook} - {book.author} (Còn: {book.quantityForBorrow})
+                                            {book.nameBook} - {book.author} - {book.isbn} (Còn: {book.quantityForBorrow})
                                         </option>
                                     ))}
                                 </select>
