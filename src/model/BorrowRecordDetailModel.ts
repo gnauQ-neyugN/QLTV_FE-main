@@ -1,4 +1,11 @@
-import BookModel from "./BookModel";
+import BookItemModel from "./BookItemModel";
+
+export interface ViolationTypeModel {
+    idLibraryViolationType: number;
+    code: string;
+    description: string;
+    fine: number;
+}
 
 class BorrowRecordDetailModel {
     id: number;
@@ -6,18 +13,25 @@ class BorrowRecordDetailModel {
     isReturned: boolean;
     returnDate?: Date;
     notes?: string;
-    book: BookModel;
+    bookItem: BookItemModel; // Changed from book to bookItem
+    violationType?: ViolationTypeModel;
 
     constructor(
         id: number,
         quantity: number,
         isReturned: boolean,
-        book: BookModel
+        bookItem: BookItemModel,
+        returnDate?: Date,
+        notes?: string,
+        violationType?: ViolationTypeModel
     ) {
         this.id = id;
         this.quantity = quantity;
         this.isReturned = isReturned;
-        this.book = book;
+        this.bookItem = bookItem;
+        this.returnDate = returnDate;
+        this.notes = notes;
+        this.violationType = violationType;
     }
 }
 
