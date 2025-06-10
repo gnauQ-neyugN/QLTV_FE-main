@@ -1,34 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import BookModel from '../../../model/BookModel';
+import BookItemModel from '../../../model/BookItemModel';
+import LibraryCardModel from '../../../model/LibraryCardModel';
+import UserModel from '../../../model/UserModel';
+import { getAllBook, searchBook } from '../../../api/BookApi';
+import LibraryCardApi, { LibraryCardWithUser } from '../../../api/LibraryCardApi';
 import { request } from '../../../api/Request';
+import { endpointBE } from '../../../layouts/utils/Constant';
 
 interface BorrowRecordCreateProps {
     handleCloseModal: () => void;
     setKeyCountReload?: (value: number) => void;
-}
-
-interface LibraryCard {
-    idLibraryCard: number;
-    cardNumber: string;
-    activated: boolean;
-    userName: string;
-}
-
-interface BookModel {
-    idBook: number;
-    nameBook: string;
-    author: string;
-    quantityForBorrow: number;
-    isbn: string
-    thumbnail?: string;
-}
-
-interface BookItemModel {
-    idBookItem: number;
-    barcode: string;
-    status: string;
-    location: string;
-    condition: number;
-    book: BookModel;
 }
 
 interface CartItem {
@@ -37,52 +20,46 @@ interface CartItem {
 
 const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModal, setKeyCountReload }) => {
     const [submitting, setSubmitting] = useState(false);
-    const [libraryCards, setLibraryCards] = useState<LibraryCard[]>([]);
-    const [selectedCard, setSelectedCard] = useState<LibraryCard | null>(null);
+    const [libraryCards, setLibraryCards] = useState<LibraryCardWithUser[]>([]);
+    const [filteredLibraryCards, setFilteredLibraryCards] = useState<LibraryCardWithUser[]>([]);
+    const [selectedCard, setSelectedCard] = useState<LibraryCardWithUser | null>(null);
     const [books, setBooks] = useState<BookModel[]>([]);
+    const [filteredBooks, setFilteredBooks] = useState<BookModel[]>([]);
     const [availableBookItems, setAvailableBookItems] = useState<BookItemModel[]>([]);
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [selectedBook, setSelectedBook] = useState<BookModel | null>(null);
     const [selectedBookItem, setSelectedBookItem] = useState<BookItemModel | null>(null);
     const [notes, setNotes] = useState<string>('');
+
+    // Search states
+    const [cardSearchTerm, setCardSearchTerm] = useState<string>('');
+    const [bookSearchTerm, setBookSearchTerm] = useState<string>('');
+
+    // Loading states
     const [loadingBooks, setLoadingBooks] = useState(false);
     const [loadingBookItems, setLoadingBookItems] = useState(false);
     const [loadingCards, setLoadingCards] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch library cards
+    // Date states
+    const [borrowDate, setBorrowDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [dueDate, setDueDate] = useState<string>(
+        new Date(new Date().setDate(new Date().getDate() + 60)).toISOString().split('T')[0]
+    );
+
+    // Fetch library cards and users
     useEffect(() => {
-        const fetchLibraryCards = async () => {
+        const fetchLibraryCardsAndUsers = async () => {
             setLoadingCards(true);
             try {
-                const response = await request(`http://localhost:8080/library-cards?projection=full`);
+                // Use the new API method to fetch library cards with user info
+                const cardsData = await LibraryCardApi.fetchLibraryCardsWithUsers();
 
-                if (response && response._embedded && response._embedded.libraryCards) {
-                    const activeCards = await Promise.all(
-                        response._embedded.libraryCards
-                            .filter((card: any) => card.activated)
-                            .map(async (card: any) => {
-                                try {
-                                    const userdata = await card._embedded.user;
-                                    return {
-                                        idLibraryCard: card.idLibraryCard,
-                                        cardNumber: card.cardNumber,
-                                        activated: card.activated,
-                                        userName: userdata.username
-                                    };
-                                } catch (error) {
-                                    console.error('Error fetching user for card:', error);
-                                    return {
-                                        idLibraryCard: card.idLibraryCard,
-                                        cardNumber: card.cardNumber,
-                                        activated: card.activated,
-                                        userName: 'Unknown'
-                                    };
-                                }
-                            })
-                    );
-                    setLibraryCards(activeCards);
-                }
+                // Filter only activated cards
+                const activeCards = cardsData.filter(card => card.activated);
+
+                setLibraryCards(activeCards);
+                setFilteredLibraryCards(activeCards);
             } catch (error) {
                 console.error('Error fetching library cards:', error);
                 setError('Không thể tải thông tin thẻ thư viện. Vui lòng thử lại sau.');
@@ -91,7 +68,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
             }
         };
 
-        fetchLibraryCards();
+        fetchLibraryCardsAndUsers();
     }, []);
 
     // Fetch books
@@ -99,28 +76,16 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
         const fetchBooks = async () => {
             setLoadingBooks(true);
             try {
-                const response = await request(`http://localhost:8080/books?size=1000`);
+                // Fetch books using existing API
+                const booksResponse = await getAllBook(1000, 0);
 
-                if (response && response._embedded && response._embedded.books) {
-                    const booksWithImages = await Promise.all(
-                        response._embedded.books
-                            .filter((book: BookModel) => book.quantityForBorrow > 0)
-                            .map(async (book: BookModel) => {
-                                try {
-                                    const imagesResponse = await request(`http://localhost:8080/books/${book.idBook}/listImages`);
-                                    const thumbnail = imagesResponse._embedded.images.find((img: any) => img.thumbnail);
-                                    return {
-                                        ...book,
-                                        thumbnail: thumbnail ? thumbnail.urlImage : '',
-                                    };
-                                } catch (error) {
-                                    console.error(`Error fetching images for book ${book.idBook}:`, error);
-                                    return book;
-                                }
-                            })
-                    );
-                    setBooks(booksWithImages);
-                }
+                // Filter books that have quantity for borrow > 0
+                const availableBooks = booksResponse.bookList.filter(
+                    book => book.quantityForBorrow && book.quantityForBorrow > 0
+                );
+
+                setBooks(availableBooks);
+                setFilteredBooks(availableBooks);
             } catch (error) {
                 console.error('Error fetching books:', error);
                 setError('Không thể tải thông tin sách. Vui lòng thử lại sau.');
@@ -132,6 +97,48 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
         fetchBooks();
     }, []);
 
+    // Filter library cards based on search term
+    useEffect(() => {
+        if (!cardSearchTerm.trim()) {
+            setFilteredLibraryCards(libraryCards);
+            return;
+        }
+
+        const searchLower = cardSearchTerm.toLowerCase();
+
+        const filtered = libraryCards.filter(card => {
+            return (
+                card.cardNumber?.toLowerCase().includes(searchLower) ||
+                card.user?.username?.toLowerCase().includes(searchLower) ||
+                card.user?.firstName?.toLowerCase().includes(searchLower) ||
+                card.user?.lastName?.toLowerCase().includes(searchLower) ||
+                card.user?.email?.toLowerCase().includes(searchLower) ||
+                `${card.user?.firstName || ''} ${card.user?.lastName || ''}`.toLowerCase().includes(searchLower)
+            );
+        });
+
+        setFilteredLibraryCards(filtered);
+    }, [cardSearchTerm, libraryCards]);
+
+    // Filter books based on search term
+    useEffect(() => {
+        if (!bookSearchTerm.trim()) {
+            setFilteredBooks(books);
+            return;
+        }
+
+        const filtered = books.filter(book => {
+            const searchLower = bookSearchTerm.toLowerCase();
+            return (
+                book.nameBook?.toLowerCase().includes(searchLower) ||
+                book.isbn?.toLowerCase().includes(searchLower) ||
+                book.author?.toLowerCase().includes(searchLower)
+            );
+        });
+
+        setFilteredBooks(filtered);
+    }, [bookSearchTerm, books]);
+
     // Fetch available book items when a book is selected
     useEffect(() => {
         const fetchAvailableBookItems = async () => {
@@ -142,27 +149,30 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
 
             setLoadingBookItems(true);
             try {
-                const response = await request(`http://localhost:8080/books/${selectedBook.idBook}/listBookItems`);
+                const response = await request(`${endpointBE}/books/${selectedBook.idBook}/listBookItems`);
 
                 if (response && response._embedded && response._embedded.bookItems) {
                     const availableItems = response._embedded.bookItems.filter((item: any) =>
                         item.status === 'AVAILABLE' || item.status === 'Có sẵn'
                     );
 
-                    setAvailableBookItems(availableItems.map((item: any) => ({
+                    const bookItemModels: BookItemModel[] = availableItems.map((item: any) => ({
                         idBookItem: item.idBookItem,
                         barcode: item.barcode,
                         status: item.status,
                         location: item.location,
                         condition: item.condition,
                         book: selectedBook
-                    })));
+                    }));
+
+                    setAvailableBookItems(bookItemModels);
                 } else {
                     setAvailableBookItems([]);
                 }
             } catch (error) {
                 console.error('Error fetching book items:', error);
                 setAvailableBookItems([]);
+                toast.error('Không thể tải thông tin bản sao sách');
             } finally {
                 setLoadingBookItems(false);
             }
@@ -173,13 +183,13 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
 
     const handleAddToCart = () => {
         if (!selectedBookItem) {
-            alert('Vui lòng chọn bản sao sách cụ thể');
+            toast.warning('Vui lòng chọn bản sao sách cụ thể');
             return;
         }
 
         const existingItem = cartItems.find(item => item.bookItem.idBookItem === selectedBookItem.idBookItem);
         if (existingItem) {
-            alert('Bản sao sách này đã được thêm vào danh sách mượn');
+            toast.warning('Bản sao sách này đã được thêm vào danh sách mượn');
             return;
         }
 
@@ -187,50 +197,65 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
         setSelectedBook(null);
         setSelectedBookItem(null);
         setAvailableBookItems([]);
+        setBookSearchTerm('');
+        toast.success('Đã thêm sách vào danh sách mượn');
     };
 
     const handleRemoveFromCart = (index: number) => {
         const newCartItems = [...cartItems];
         newCartItems.splice(index, 1);
         setCartItems(newCartItems);
+        toast.info('Đã xóa sách khỏi danh sách mượn');
     };
 
-    const [borrowDate, setBorrowDate] = useState<string>(new Date().toISOString().split('T')[0]);
-    const [dueDate, setDueDate] = useState<string>(
-        new Date(new Date().setDate(new Date().getDate() + 60)).toISOString().split('T')[0]
-    );
+    const handleCardSelect = (card: LibraryCardWithUser) => {
+        setSelectedCard(card);
+        setCardSearchTerm(card.cardNumber || '');
+    };
 
-    const handleSubmit = async () => {
+    const handleBookSelect = (book: BookModel) => {
+        setSelectedBook(book);
+        setSelectedBookItem(null);
+        setBookSearchTerm(book.nameBook || '');
+    };
+
+    const validateForm = (): boolean => {
         if (!selectedCard) {
-            alert('Vui lòng chọn thẻ thư viện');
-            return;
+            toast.error('Vui lòng chọn thẻ thư viện');
+            return false;
         }
 
         if (cartItems.length === 0) {
-            alert('Vui lòng thêm ít nhất một bản sao sách');
-            return;
+            toast.error('Vui lòng thêm ít nhất một bản sao sách');
+            return false;
         }
 
         if (!borrowDate) {
-            alert('Vui lòng chọn ngày mượn');
-            return;
+            toast.error('Vui lòng chọn ngày mượn');
+            return false;
         }
 
         if (!dueDate) {
-            alert('Vui lòng chọn ngày hẹn trả');
-            return;
+            toast.error('Vui lòng chọn ngày hẹn trả');
+            return false;
         }
 
         if (new Date(dueDate) <= new Date(borrowDate)) {
-            alert('Ngày hẹn trả phải sau ngày mượn');
-            return;
+            toast.error('Ngày hẹn trả phải sau ngày mượn');
+            return false;
         }
+
+        return true;
+    };
+
+    const handleSubmit = async () => {
+        if (!validateForm()) return;
 
         setSubmitting(true);
 
         try {
             const borrowRecordData = {
-                idLibraryCard: selectedCard.idLibraryCard,
+                idLibraryCard: selectedCard!.idLibraryCard,
                 borrowDate: borrowDate,
                 dueDate: dueDate,
                 notes: notes,
@@ -240,7 +265,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
             };
 
             const token = localStorage.getItem("token");
-            const response = await fetch('http://localhost:8080/borrow-record/add-borrow-record', {
+            const response = await fetch(`${endpointBE}/borrow-record/add-borrow-record`, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${token}`,
@@ -254,7 +279,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                 throw new Error(errorText || "Failed to create borrow record");
             }
 
-            alert('Tạo phiếu mượn thành công');
+            toast.success('Tạo phiếu mượn thành công');
 
             if (setKeyCountReload) {
                 setKeyCountReload(Math.random());
@@ -263,10 +288,86 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
             handleCloseModal();
         } catch (error: any) {
             console.error('Error creating borrow record:', error);
-            alert(error.message || 'Lỗi khi tạo phiếu mượn');
+            toast.error(error.message || 'Lỗi khi tạo phiếu mượn');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const renderCardSearchResults = () => {
+        if (!cardSearchTerm.trim() || filteredLibraryCards.length === 0) return null;
+
+        return (
+            <div className="card mt-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                <div className="list-group list-group-flush">
+                    {filteredLibraryCards.slice(0, 10).map(card => (
+                        <button
+                            key={card.idLibraryCard}
+                            type="button"
+                            className="list-group-item list-group-item-action"
+                            onClick={() => handleCardSelect(card)}
+                        >
+                            <div className="d-flex justify-content-between">
+                                <div>
+                                    <div className="fw-bold">{card.cardNumber}</div>
+                                    <div className="text-muted">
+                                        {card.user ? (
+                                            <>
+                                                <div>Tên: {card.user.firstName} {card.user.lastName}</div>
+                                                <small>Username: {card.user.username}</small>
+                                            </>
+                                        ) : (
+                                            'Không có thông tin user'
+                                        )}
+                                    </div>
+                                </div>
+                                <span className="badge bg-success">Hoạt động</span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const renderBookSearchResults = () => {
+        if (!bookSearchTerm.trim() || filteredBooks.length === 0) return null;
+
+        return (
+            <div className="card mt-2" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <div className="list-group list-group-flush">
+                    {filteredBooks.slice(0, 10).map(book => (
+                        <button
+                            key={book.idBook}
+                            type="button"
+                            className="list-group-item list-group-item-action"
+                            onClick={() => handleBookSelect(book)}
+                        >
+                            <div className="d-flex align-items-center">
+                                {book.thumbnail && (
+                                    <img
+                                        src={book.thumbnail}
+                                        alt={book.nameBook}
+                                        width="40"
+                                        height="60"
+                                        style={{ objectFit: 'cover' }}
+                                        className="me-3"
+                                    />
+                                )}
+                                <div className="flex-grow-1">
+                                    <div className="fw-bold">{book.nameBook}</div>
+                                    <div className="text-muted">Tác giả: {book.author}</div>
+                                    <div className="text-muted">ISBN: {book.isbn}</div>
+                                    <small className="text-success">
+                                        Còn lại: {book.quantityForBorrow} bản
+                                    </small>
+                                </div>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -280,78 +381,83 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
             )}
 
             <div className="row">
+                {/* Library Card Selection */}
                 <div className="col-12 mb-4">
                     <h5 className="mb-2">Thông tin độc giả</h5>
                     <div className="card p-3">
                         <div className="mb-3">
-                            <label className="form-label">Chọn thẻ thư viện</label>
-                            <select
+                            <label className="form-label">Tìm kiếm thẻ thư viện</label>
+                            <input
+                                type="text"
                                 className="form-control"
-                                value={selectedCard?.idLibraryCard || ''}
-                                onChange={(e) => {
-                                    const cardId = parseInt(e.target.value);
-                                    const card = libraryCards.find(c => c.idLibraryCard === cardId);
-                                    setSelectedCard(card || null);
-                                }}
+                                placeholder="Nhập mã thẻ thư viện, tên hoặc username để tìm kiếm..."
+                                value={cardSearchTerm}
+                                onChange={(e) => setCardSearchTerm(e.target.value)}
                                 disabled={loadingCards}
-                            >
-                                <option value="">-- Chọn thẻ thư viện --</option>
-                                {libraryCards.map(card => (
-                                    <option key={card.idLibraryCard} value={card.idLibraryCard}>
-                                        {card.cardNumber}
-                                    </option>
-                                ))}
-                            </select>
+                            />
                             {loadingCards && <div className="text-muted mt-1">Đang tải...</div>}
                         </div>
 
+                        {renderCardSearchResults()}
+
                         {selectedCard && (
-                            <div className="mt-2">
-                                <h6>Thông tin độc giả</h6>
+                            <div className="mt-3 p-3 bg-light rounded">
+                                <h6>Thông tin độc giả đã chọn</h6>
                                 <div className="row">
-                                    <div className="col-4">
+                                    <div className="col-3">
                                         <small className="text-muted">Mã thẻ</small>
                                         <div className="fw-bold">{selectedCard.cardNumber}</div>
                                     </div>
-                                    <div className="col-4">
+                                    <div className="col-3">
                                         <small className="text-muted">Tên độc giả</small>
-                                        <div className="fw-bold">{selectedCard.userName}</div>
+                                        <div className="fw-bold">
+                                            {selectedCard.user ?
+                                                `${selectedCard.user.firstName} ${selectedCard.user.lastName}` :
+                                                'N/A'
+                                            }
+                                        </div>
                                     </div>
-                                    <div className="col-4">
+                                    <div className="col-3">
+                                        <small className="text-muted">Username</small>
+                                        <div className="fw-bold">{selectedCard.user?.username || 'N/A'}</div>
+                                    </div>
+                                    <div className="col-3">
                                         <small className="text-muted">Trạng thái thẻ</small>
                                         <div className="fw-bold text-success">Đã kích hoạt</div>
                                     </div>
                                 </div>
+                                <button
+                                    className="btn btn-sm btn-outline-secondary mt-2"
+                                    onClick={() => {
+                                        setSelectedCard(null);
+                                        setCardSearchTerm('');
+                                    }}
+                                >
+                                    Chọn thẻ khác
+                                </button>
                             </div>
                         )}
                     </div>
                 </div>
 
+                {/* Book Selection */}
                 <div className="col-12 mb-4">
                     <h5 className="mb-2">Chọn sách và bản sao</h5>
                     <div className="card p-3">
                         <div className="row">
                             <div className="col-6">
-                                <label className="form-label">Chọn sách</label>
-                                <select
+                                <label className="form-label">Tìm kiếm sách</label>
+                                <input
+                                    type="text"
                                     className="form-control"
-                                    value={selectedBook?.idBook || ''}
-                                    onChange={(e) => {
-                                        const bookId = parseInt(e.target.value);
-                                        const book = books.find(b => b.idBook === bookId);
-                                        setSelectedBook(book || null);
-                                        setSelectedBookItem(null);
-                                    }}
+                                    placeholder="Nhập tên sách hoặc ISBN để tìm kiếm..."
+                                    value={bookSearchTerm}
+                                    onChange={(e) => setBookSearchTerm(e.target.value)}
                                     disabled={loadingBooks}
-                                >
-                                    <option value="">-- Chọn sách --</option>
-                                    {books.map(book => (
-                                        <option key={book.idBook} value={book.idBook}>
-                                            {book.nameBook} - {book.author} - {book.isbn} (Còn: {book.quantityForBorrow})
-                                        </option>
-                                    ))}
-                                </select>
+                                />
                                 {loadingBooks && <div className="text-muted mt-1">Đang tải...</div>}
+
+                                {renderBookSearchResults()}
                             </div>
 
                             <div className="col-6">
@@ -377,19 +483,8 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                             </div>
                         </div>
 
-                        <div className="mt-2 d-flex justify-content-end">
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleAddToCart}
-                                disabled={!selectedBookItem}
-                            >
-                                <i className="fas fa-plus me-2"></i>
-                                Thêm vào danh sách mượn
-                            </button>
-                        </div>
-
                         {selectedBook && (
-                            <div className="card mt-2">
+                            <div className="card mt-3">
                                 <div className="card-body">
                                     <div className="d-flex align-items-center">
                                         {selectedBook.thumbnail && (
@@ -405,6 +500,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                         <div>
                                             <h6 className="fw-bold">{selectedBook.nameBook}</h6>
                                             <div className="text-muted">Tác giả: {selectedBook.author}</div>
+                                            <div className="text-muted">ISBN: {selectedBook.isbn}</div>
                                             <div className="text-muted">Số lượng còn lại: {selectedBook.quantityForBorrow}</div>
                                             <div className="text-muted">Bản sao có sẵn: {availableBookItems.length}</div>
                                         </div>
@@ -412,9 +508,21 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                 </div>
                             </div>
                         )}
+
+                        <div className="mt-3 d-flex justify-content-end">
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleAddToCart}
+                                disabled={!selectedBookItem}
+                            >
+                                <i className="fas fa-plus me-2"></i>
+                                Thêm vào danh sách mượn
+                            </button>
+                        </div>
                     </div>
                 </div>
 
+                {/* Cart Items */}
                 <div className="col-12 mb-4">
                     <h5 className="mb-2">
                         Danh sách sách mượn {cartItems.length > 0 && `(${cartItems.length} bản sao)`}
@@ -467,14 +575,18 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                             </td>
                                             <td>{item.bookItem.location}</td>
                                             <td>
-                                                    <span className={`badge ${item.bookItem.condition >= 80 ? "bg-success" : item.bookItem.condition >= 60 ? "bg-warning" : "bg-danger"}`}>
-                                                        {item.bookItem.condition}%
-                                                    </span>
+                                                <span className={`badge ${
+                                                    item.bookItem.condition >= 80 ? "bg-success" :
+                                                        item.bookItem.condition >= 60 ? "bg-warning text-dark" : "bg-danger"
+                                                }`}>
+                                                    {item.bookItem.condition}%
+                                                </span>
                                             </td>
                                             <td className="text-center">
                                                 <button
                                                     className="btn btn-sm btn-outline-danger"
                                                     onClick={() => handleRemoveFromCart(index)}
+                                                    title="Xóa khỏi danh sách"
                                                 >
                                                     <i className="fas fa-trash"></i>
                                                 </button>
@@ -488,6 +600,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                     </div>
                 </div>
 
+                {/* Borrow Information */}
                 <div className="col-12 mb-4">
                     <h5 className="mb-2">Thông tin mượn sách</h5>
                     <div className="card p-3">

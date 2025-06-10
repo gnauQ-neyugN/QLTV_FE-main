@@ -217,12 +217,6 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
             return;
         }
 
-        // Check if violation type is selected when status is "Returned"
-        if (newStatus === BORROW_RECORD_STATUS.RETURNED && !selectedViolationType) {
-            toast.error("Vui lòng chọn loại vi phạm (hoặc 'Không vi phạm' nếu không có)");
-            return;
-        }
-
         setSubmitting(true);
 
         try {
@@ -297,25 +291,6 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                         value={updatedReturnDate}
                                         onChange={(e) => setUpdatedReturnDate(e.target.value)}
                                     />
-                                </div>
-                            )}
-
-                            {updatedIsReturned && (
-                                <div className="mb-3">
-                                    <label className="form-label">Loại vi phạm</label>
-                                    <select
-                                        className="form-control"
-                                        value={updatedViolationCode}
-                                        onChange={(e) => setUpdatedViolationCode(e.target.value)}
-                                    >
-                                        <option value="">Chọn loại vi phạm</option>
-                                        <option value="Không vi phạm">Không vi phạm</option>
-                                        {violationTypes.map((type) => (
-                                            <option key={type.code} value={type.code}>
-                                                {type.code} - {type.description}
-                                            </option>
-                                        ))}
-                                    </select>
                                 </div>
                             )}
 
@@ -418,10 +393,6 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                 <div className="fw-bold">{record.id}</div>
                             </div>
                             <div className="col-md-4 mb-2">
-                                <small className="text-muted">Tên độc giả</small>
-                                <div className="fw-bold">{record.userName}</div>
-                            </div>
-                            <div className="col-md-4 mb-2">
                                 <small className="text-muted">Mã thẻ thư viện</small>
                                 <div className="fw-bold">{record.cardNumber}</div>
                             </div>
@@ -437,14 +408,14 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                 <small className="text-muted">Ngày trả</small>
                                 <div className="fw-bold">{BorrowRecordApi.formatDate(record.returnDate)}</div>
                             </div>
-                            {record.fineAmount && record.fineAmount > 0 && (
-                                <div className="col-md-4 mb-2">
-                                    <small className="text-muted">Tiền phạt</small>
-                                    <div className="fw-bold text-danger">
-                                        {record.fineAmount.toLocaleString("vi-VN")}₫
-                                    </div>
+                            <div className="col-md-4 mb-2">
+                                <small className="text-muted">Tiền phạt</small>
+                                <div className={`fw-bold ${record.fineAmount && record.fineAmount > 0 ? "text-danger" : ""}`}>
+                                    {(record.fineAmount ?? 0).toLocaleString("vi-VN")}₫
                                 </div>
-                            )}
+                            </div>
+
+
                         </div>
                         <div className="mt-3">
                             <small className="text-muted">Ghi chú</small>
@@ -488,13 +459,6 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div className="mb-4">
-                    <h5 className="mb-2">Tiến trình xử lý</h5>
-                    <div className="card p-3">
-                        <StepperComponent steps={steps} activeStep={activeStep} />
                     </div>
                 </div>
 

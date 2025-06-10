@@ -16,6 +16,16 @@ export interface LibraryCard {
     violationCount?: number;
 }
 
+export interface LibraryCardWithUser extends LibraryCard {
+    user?: {
+        idUser: number;
+        username: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+    };
+}
+
 export interface LibraryCardResponse {
     content: LibraryCard[];
     totalElements: number;
@@ -33,6 +43,99 @@ class LibraryCardApi {
             throw new Error("Authentication token not found");
         }
         return token;
+    }
+
+    public async fetchLibraryCardsWithUsers(): Promise<LibraryCardWithUser[]> {
+        try {
+            const response = await fetch(`${endpointBE}/library-cards?projection=full&size=1000`, {
+                headers: this.getHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to fetch library cards");
+            }
+
+            const data = await response.json();
+            if (data._embedded && data._embedded.libraryCards) {
+                const processedCards = await Promise.all(
+                    data._embedded.libraryCards.map(async (card: any) => {
+                        let user = undefined;
+
+                        try {
+                            // Get user data if available
+                            if (card._embedded && card._embedded.user) {
+                                const userData = card._embedded.user;
+                                user = {
+                                    idUser: userData.idUser,
+                                    username: userData.username,
+                                    firstName: userData.firstName || "",
+                                    lastName: userData.lastName || "",
+                                    email: userData.email || ""
+                                };
+                            }
+                        } catch (err) {
+                            console.error("Error processing user data:", err);
+                        }
+
+                        // Check if card is expired
+                        const expiryDate = card.expiryDate ? new Date(card.expiryDate) : null;
+                        const isExpired = expiryDate ? new Date() > expiryDate : false;
+                        const activated = isExpired ? false : card.activated;
+
+                        return {
+                            id: card.idLibraryCard,
+                            idLibraryCard: card.idLibraryCard,
+                            cardNumber: card.cardNumber || "",
+                            userName: user ? `${user.firstName} ${user.lastName}`.trim() || user.username : "Unknown",
+                            userId: user?.idUser || 0,
+                            issuedDate: card.issuedDate,
+                            expiryDate: card.expiryDate,
+                            activated,
+                            status: card.status || "",
+                            violationCount: 0, // Will be set separately if needed
+                            user
+                        };
+                    })
+                );
+
+                return processedCards;
+            }
+            return [];
+        } catch (error) {
+            console.error("Error fetching library cards with users:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Search library cards by card number or username
+     */
+    public async searchLibraryCards(searchTerm: string): Promise<LibraryCardWithUser[]> {
+        try {
+            const allCards = await this.fetchLibraryCardsWithUsers();
+
+            if (!searchTerm.trim()) {
+                return allCards.filter(card => card.activated);
+            }
+
+            const searchLower = searchTerm.toLowerCase();
+
+            return allCards.filter(card => {
+                if (!card.activated) return false;
+
+                return (
+                    card.cardNumber?.toLowerCase().includes(searchLower) ||
+                    card.user?.username?.toLowerCase().includes(searchLower) ||
+                    card.user?.firstName?.toLowerCase().includes(searchLower) ||
+                    card.user?.lastName?.toLowerCase().includes(searchLower) ||
+                    card.user?.email?.toLowerCase().includes(searchLower) ||
+                    `${card.user?.firstName} ${card.user?.lastName}`.toLowerCase().includes(searchLower)
+                );
+            });
+        } catch (error) {
+            console.error("Error searching library cards:", error);
+            throw error;
+        }
     }
 
     /**

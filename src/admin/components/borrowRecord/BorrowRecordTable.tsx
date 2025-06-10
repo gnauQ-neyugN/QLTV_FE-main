@@ -58,7 +58,6 @@ export const BorrowRecordTable: React.FC<BorrowRecordTableProps> = (props) => {
 
     const columns: GridColDef[] = [
         { field: "id", headerName: "ID", width: 70 },
-        { field: "userName", headerName: "NGƯỜI DÙNG", width: 150 },
         { field: "cardNumber", headerName: "MÃ THẺ", width: 120 },
         {
             field: "borrowDate",
@@ -91,6 +90,11 @@ export const BorrowRecordTable: React.FC<BorrowRecordTableProps> = (props) => {
                     />
                 );
             },
+        },
+        {
+            field: "fineAmount",
+            headerName: "Tiền phạt",
+            width: 120,
         },
         {
             field: "action",

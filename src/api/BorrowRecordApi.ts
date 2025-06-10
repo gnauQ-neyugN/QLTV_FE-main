@@ -201,7 +201,7 @@ class BorrowRecordApi {
 
                         // Fetch user info from library card
                         if (libraryCardResponse._links?.user) {
-                            const userResponse = await request(libraryCardResponse._links.user.href);
+                            const userResponse = libraryCardResponse._embedded.user;
                             userName = userResponse.username || "Unknown";
                         }
                     } catch (error) {
