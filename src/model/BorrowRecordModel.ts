@@ -1,7 +1,5 @@
 import BookItemModel from "./BookItemModel";
 import LibraryCardModel from "./LibraryCardModel";
-import UserModel from "./UserModel";
-
 export interface ViolationTypeModel {
     idLibraryViolationType: number;
     code: string;

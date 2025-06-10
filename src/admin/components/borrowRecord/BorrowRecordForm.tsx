@@ -1,24 +1,21 @@
 import React, { FormEvent, useEffect, useState } from "react";
 import {
+    Button,
     SelectChangeEvent,
-
+    Typography,
+    Box,
+    Divider,
 } from '@mui/material';
 import { toast } from 'react-toastify';
+import { StepperComponent } from '../../../layouts/utils/StepperComponent';
 import BorrowRecordApi, {
     BorrowRecord,
     BorrowRecordDetail,
     BORROW_RECORD_STATUS,
     UpdateBorrowRecordParams,
-    UpdateBookReturnParams
+    UpdateBookReturnParams,
+    ViolationType
 } from '../../../api/BorrowRecordApi';
-
-// Define a new interface for violation types
-interface ViolationType {
-    id: number;
-    code: string;
-    fine: number;
-    description: string;
-}
 
 interface BorrowRecordFormProps {
     id: number;
@@ -135,7 +132,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
         setUpdatedIsReturned(detail.isReturned);
         setUpdatedReturnDate(BorrowRecordApi.formatDateForInput(detail.returnDate));
         setUpdatedNotes(detail.notes || "");
-        setUpdatedViolationCode("");
+        setUpdatedViolationCode(detail.violationType?.code || "");
         setDetailDialogOpen(true);
     };
 
@@ -161,7 +158,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                 isReturned: updatedIsReturned,
                 returnDate: effectiveReturnDate,
                 notes: updatedNotes,
-                code: updatedViolationCode || "Không vi phạm", // Default to no violation
+                code: updatedViolationCode || "Không vi phạm",
             };
 
             await BorrowRecordApi.updateBookReturnStatus(updateParams);
@@ -180,9 +177,17 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                     : detail
             );
 
+            // Check before and after update
+            const wasAllReturnedBefore = details.every(detail => detail.isReturned);
+            const isAllReturnedNow = updatedDetails.every(detail => detail.isReturned);
+
             // Update state
             setDetails(updatedDetails);
 
+            // Notify if all books have been returned
+            if (isAllReturnedNow && !wasAllReturnedBefore) {
+                toast.info("Tất cả sách đã được trả. Bạn có thể cập nhật trạng thái phiếu mượn thành 'Đã trả'.");
+            }
 
             handleCloseDetailDialog();
         } catch (error) {
@@ -209,6 +214,12 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
         // Check if status is "Returned" but not all books have been returned
         if (newStatus === BORROW_RECORD_STATUS.RETURNED && !details.every(detail => detail.isReturned)) {
             toast.error("Không thể cập nhật trạng thái phiếu mượn thành 'Đã trả' vì còn sách chưa được trả!");
+            return;
+        }
+
+        // Check if violation type is selected when status is "Returned"
+        if (newStatus === BORROW_RECORD_STATUS.RETURNED && !selectedViolationType) {
+            toast.error("Vui lòng chọn loại vi phạm (hoặc 'Không vi phạm' nếu không có)");
             return;
         }
 
@@ -301,7 +312,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                         <option value="Không vi phạm">Không vi phạm</option>
                                         {violationTypes.map((type) => (
                                             <option key={type.code} value={type.code}>
-                                                {type.code}
+                                                {type.code} - {type.description}
                                             </option>
                                         ))}
                                     </select>
@@ -384,9 +395,9 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
     return (
         <div className="container bg-white p-4 rounded">
-            <h2 className="text-center mb-4">
+            <Typography variant="h4" component="h2" className="text-center mb-4">
                 {props.option === "update" ? "CẬP NHẬT PHIẾU MƯỢN" : "CHI TIẾT PHIẾU MƯỢN"}
-            </h2>
+            </Typography>
 
             <form onSubmit={handleSubmit}>
                 <div className="mb-4">
@@ -426,6 +437,14 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                 <small className="text-muted">Ngày trả</small>
                                 <div className="fw-bold">{BorrowRecordApi.formatDate(record.returnDate)}</div>
                             </div>
+                            {record.fineAmount && record.fineAmount > 0 && (
+                                <div className="col-md-4 mb-2">
+                                    <small className="text-muted">Tiền phạt</small>
+                                    <div className="fw-bold text-danger">
+                                        {record.fineAmount.toLocaleString("vi-VN")}₫
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="mt-3">
                             <small className="text-muted">Ghi chú</small>
@@ -433,6 +452,52 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                         </div>
                     </div>
                 </div>
+
+                <div className="mb-4">
+                    <h5 className="mb-2">Thống kê</h5>
+                    <div className="row">
+                        <div className="col-md-3">
+                            <div className="card text-center">
+                                <div className="card-body">
+                                    <h6 className="card-title">Tổng số đầu sách</h6>
+                                    <div className="h4 text-primary">{stats.totalTitles}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <div className="card text-center">
+                                <div className="card-body">
+                                    <h6 className="card-title">Tổng số sách</h6>
+                                    <div className="h4 text-info">{stats.totalBooks}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <div className="card text-center">
+                                <div className="card-body">
+                                    <h6 className="card-title">Đã trả</h6>
+                                    <div className="h4 text-success">{stats.returnedBooks}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <div className="card text-center">
+                                <div className="card-body">
+                                    <h6 className="card-title">Chưa trả</h6>
+                                    <div className="h4 text-warning">{stats.remainingBooks}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mb-4">
+                    <h5 className="mb-2">Tiến trình xử lý</h5>
+                    <div className="card p-3">
+                        <StepperComponent steps={steps} activeStep={activeStep} />
+                    </div>
+                </div>
+
                 <div className="mb-4">
                     <h5 className="mb-2">Danh sách sách mượn</h5>
                     <div className="card">
@@ -442,10 +507,12 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                 <tr>
                                     <th>STT</th>
                                     <th>Tên sách</th>
-                                    <th>Bản sao</th>
+                                    <th>Mã vạch</th>
+                                    <th>Vị trí</th>
                                     <th>Tình trạng</th>
                                     <th>Đã trả</th>
                                     <th>Ngày trả</th>
+                                    <th>Vi phạm</th>
                                     <th>Ghi chú</th>
                                     <th className="text-center">Thao tác</th>
                                 </tr>
@@ -461,8 +528,9 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                             </div>
                                         </td>
                                         <td>
-                                            <span className="fw-bold">{detail.bookItem.barcode}</span>
+                                            <span className="badge bg-outline-secondary">{detail.bookItem.barcode}</span>
                                         </td>
+                                        <td>{detail.bookItem.location}</td>
                                         <td>
                                                 <span className={`badge ${
                                                     detail.bookItem.condition >= 80 ? "bg-success" :
@@ -477,6 +545,17 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                                 </span>
                                         </td>
                                         <td>{BorrowRecordApi.formatDate(detail.returnDate)}</td>
+                                        <td>
+                                            {detail.violationType ? (
+                                                <span className={`badge ${
+                                                    detail.violationType.code === 'Không vi phạm' ? 'bg-success' : 'bg-danger'
+                                                }`}>
+                                                    {detail.violationType.code}
+                                                </span>
+                                            ) : (
+                                                "—"
+                                            )}
+                                        </td>
                                         <td>{detail.notes || "—"}</td>
                                         <td className="text-center">
                                             {props.option === "update" && (
@@ -518,6 +597,26 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                     </select>
                                 </div>
 
+                                {showViolationSelect && (
+                                    <div className="col-md-6 mb-3">
+                                        <label className="form-label">Loại vi phạm</label>
+                                        <select
+                                            className="form-control"
+                                            value={selectedViolationType}
+                                            onChange={(e) => handleViolationTypeChange(e as any)}
+                                            required
+                                        >
+                                            <option value="">Chọn loại vi phạm</option>
+                                            <option value="Không vi phạm">Không vi phạm</option>
+                                            {violationTypes.map((type) => (
+                                                <option key={type.code} value={type.code}>
+                                                    {type.code} - {type.description}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
                                 <div className="col-12">
                                     <label className="form-label">Ghi chú</label>
                                     <textarea
@@ -537,11 +636,18 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                     Vui lòng cập nhật trạng thái từng sách trước.
                                 </div>
                             )}
+
+                            {newStatus === BORROW_RECORD_STATUS.RETURNED && stats.allReturned && (
+                                <div className="alert alert-success mt-3">
+                                    <i className="fas fa-check-circle me-2"></i>
+                                    Tất cả sách đã được trả. Có thể cập nhật trạng thái phiếu mượn thành "Đã trả".
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
-                <hr className="my-4" />
+                <Divider className="my-4" />
 
                 <div className="d-flex justify-content-center gap-2">
                     <button

@@ -1,11 +1,10 @@
 import { endpointBE } from "../layouts/utils/Constant";
-import BorrowRecordModel from "../model/BorrowRecordModel";
-import BorrowRecordDetailModel from "../model/BorrowRecordDetailModel";
+import BorrowRecordModel, { BorrowRecordDetailModel, ViolationTypeModel } from "../model/BorrowRecordModel";
 import { request, requestAdmin } from "./Request";
 import { getIdUserByToken } from "../layouts/utils/JwtService";
 import { format } from 'date-fns';
 
-// Types
+// Types for API responses
 export type BorrowRecord = {
     id: number;
     borrowDate: string;
@@ -16,6 +15,7 @@ export type BorrowRecord = {
     cardNumber: string;
     userName: string;
     libraryCardId?: number;
+    fineAmount?: number;
 };
 
 export type BorrowRecordDetail = {
@@ -36,6 +36,7 @@ export type BorrowRecordDetail = {
             author: string;
         };
     };
+    violationType?: ViolationTypeModel;
 };
 
 export interface UpdateBorrowRecordParams {
@@ -45,7 +46,6 @@ export interface UpdateBorrowRecordParams {
     code?: string;
 }
 
-// Add a new interface for violation types
 export interface ViolationType {
     id: number;
     code: string;
@@ -58,7 +58,7 @@ export type UpdateBookReturnParams = {
     isReturned: boolean;
     returnDate: string | null;
     notes: string;
-    code?: string; // Thêm mã vi phạm
+    code?: string;
 };
 
 // Status constants
@@ -69,8 +69,6 @@ export const BORROW_RECORD_STATUS = {
     RETURNED: "Đã trả",
     CANCELLED: "Hủy"
 };
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
 
 /**
  * BorrowRecordApi class for handling all borrow record related API calls
@@ -151,21 +149,15 @@ class BorrowRecordApi {
      */
     public async fetchViolationTypes(): Promise<ViolationType[]> {
         try {
-            const response = await fetch(`${API_BASE_URL}/library-violation-types`, {
-                headers: this.getHeaders()
-            });
+            const response = await requestAdmin(`${endpointBE}/library-violation-types`);
 
-            if (!response.ok) {
-                throw new Error("Failed to fetch violation types");
+            if (!response._embedded?.libraryViolationTypes) {
+                return [];
             }
 
-            const responseData = await response.json();
-            const violationTypes = responseData._embedded?.libraryViolationTypes || [];
-
-            return violationTypes.map((type: any) => ({
+            return response._embedded.libraryViolationTypes.map((type: any) => ({
                 id: type.idLibraryViolationType,
                 code: type.code,
-                name: type.name,
                 description: type.description || '',
                 fine: type.fine || 0,
             }));
@@ -181,36 +173,37 @@ class BorrowRecordApi {
     public async fetchAllBorrowRecords(): Promise<BorrowRecord[]> {
         try {
             let allRecords: any[] = [];
-            let nextUrl = `${API_BASE_URL}/borrow-records?size=100&sort=id,desc`;
+            let page = 0;
+            let totalPages = 1;
 
-            // Duyệt qua tất cả các trang
-            while (nextUrl) {
-                const response = await fetch(nextUrl, {
-                    headers: this.getHeaders()
-                });
+            // Fetch all pages
+            while (page < totalPages) {
+                const response = await requestAdmin(`${endpointBE}/borrow-records?size=100&page=${page}&sort=id,desc`);
 
-                if (!response.ok) {
-                    throw new Error("Failed to fetch borrow records");
+                if (response._embedded?.borrowRecords) {
+                    allRecords = allRecords.concat(response._embedded.borrowRecords);
                 }
 
-                const data = await response.json();
-                const records = data._embedded?.borrowRecords || [];
-                allRecords = allRecords.concat(records);
-
-                // Lấy URL của trang tiếp theo nếu có
-                nextUrl = data._links?.next?.href || null;
+                totalPages = response.page?.totalPages || 1;
+                page++;
             }
 
-            // Xử lý các bản ghi đã gom lại
+            // Process the records
             const processedRecords = await Promise.all(
                 allRecords.map(async (record: any) => {
                     let userName = "Unknown";
                     let cardNumber = "Unknown";
 
                     try {
-                        const libraryCardData = await this.fetchLinkedResource(record._links.libraryCard.href);
-                        cardNumber = libraryCardData.cardNumber || "";
-                        userName = libraryCardData._embedded.user.username || "Unknown";
+                        // Fetch library card info
+                        const libraryCardResponse = await request(record._links.libraryCard.href);
+                        cardNumber = libraryCardResponse.cardNumber || "";
+
+                        // Fetch user info from library card
+                        if (libraryCardResponse._links?.user) {
+                            const userResponse = await request(libraryCardResponse._links.user.href);
+                            userName = userResponse.username || "Unknown";
+                        }
                     } catch (error) {
                         console.error("Error fetching related info:", error);
                     }
@@ -222,6 +215,7 @@ class BorrowRecordApi {
                         returnDate: record.returnDate,
                         notes: record.notes,
                         status: record.status,
+                        fineAmount: record.fineAmount || 0,
                         cardNumber,
                         userName,
                     };
@@ -240,15 +234,7 @@ class BorrowRecordApi {
      */
     public async fetchBorrowRecordById(id: number): Promise<BorrowRecord> {
         try {
-            const response = await fetch(`${API_BASE_URL}/borrow-records/${id}`, {
-                headers: this.getHeaders()
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to fetch borrow record");
-            }
-
-            const borrowRecordData = await response.json();
+            const borrowRecordData = await request(`${endpointBE}/borrow-records/${id}`);
 
             // Get library card info
             let cardNumber = "Unknown";
@@ -256,28 +242,27 @@ class BorrowRecordApi {
             let libraryCardId = 0;
 
             try {
-                const libraryCardData = await this.fetchLinkedResource(borrowRecordData._links.libraryCard.href);
+                const libraryCardData = await request(borrowRecordData._links.libraryCard.href);
                 cardNumber = libraryCardData.cardNumber || "";
                 libraryCardId = libraryCardData.idLibraryCard || 0;
-                userName = libraryCardData._embedded.user.username;
+                const userData = libraryCardData._embedded.user;
+                userName = userData.username;
             } catch (error) {
                 console.error("Error fetching related info:", error);
             }
 
-            // Create record object
-            const recordData: BorrowRecord = {
+            return {
                 id: borrowRecordData.id,
                 borrowDate: borrowRecordData.borrowDate,
                 dueDate: borrowRecordData.dueDate,
                 returnDate: borrowRecordData.returnDate,
                 notes: borrowRecordData.notes,
                 status: borrowRecordData.status,
+                fineAmount: borrowRecordData.fineAmount || 0,
                 cardNumber,
                 userName,
                 libraryCardId,
             };
-
-            return recordData;
         } catch (error) {
             console.error("Error in fetchBorrowRecordById:", error);
             throw error;
@@ -289,15 +274,7 @@ class BorrowRecordApi {
      */
     public async fetchBorrowRecordDetails(id: number): Promise<BorrowRecordDetail[]> {
         try {
-            const response = await fetch(`${API_BASE_URL}/borrow-records/${id}/borrowRecordDetails`, {
-                headers: this.getHeaders()
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to fetch borrow record details");
-            }
-
-            const detailsData = await response.json();
+            const detailsData = await request(`${endpointBE}/borrow-records/${id}/borrowRecordDetails`);
             const detailsList = detailsData._embedded?.borrowRecordDetails || [];
 
             // Process the details and include book item info
@@ -316,11 +293,13 @@ class BorrowRecordApi {
                         }
                     };
 
+                    let violationType: ViolationTypeModel | undefined = undefined;
+
                     try {
                         // Get book item info
-                        const bookItemData = await this.fetchLinkedResource(detail._links.bookItem.href);
+                        const bookItemData = await request(detail._links.bookItem.href);
                         // Get book info from book item
-                        const bookData = await this.fetchLinkedResource(bookItemData._links.book.href);
+                        const bookData = await request(bookItemData._links.book.href);
 
                         bookItem = {
                             idBookItem: bookItemData.idBookItem,
@@ -334,6 +313,17 @@ class BorrowRecordApi {
                                 author: bookData.author
                             }
                         };
+
+                        // Get violation type if exists
+                        if (detail._links?.violationType) {
+                            const violationData = await request(detail._links.violationType.href);
+                            violationType = {
+                                idLibraryViolationType: violationData.idLibraryViolationType,
+                                code: violationData.code,
+                                description: violationData.description,
+                                fine: violationData.fine
+                            };
+                        }
                     } catch (error) {
                         console.error("Error fetching book item info:", error);
                     }
@@ -345,6 +335,7 @@ class BorrowRecordApi {
                         returnDate: detail.returnDate,
                         notes: detail.notes,
                         bookItem,
+                        violationType,
                     };
                 })
             );
@@ -357,26 +348,10 @@ class BorrowRecordApi {
     }
 
     /**
-     * Fetch linked resource from HATEOAS link
-     */
-    private async fetchLinkedResource(url: string): Promise<any> {
-        const response = await fetch(url, {
-            headers: this.getHeaders()
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch linked resource: ${url}`);
-        }
-
-        return await response.json();
-    }
-
-    /**
      * Update borrow record status, notes, and violation code
      */
     public async updateBorrowRecord(params: UpdateBorrowRecordParams): Promise<void> {
         try {
-            // Prepare the request body
             const requestBody: any = {
                 idBorrowRecord: params.idBorrowRecord,
                 status: params.status,
@@ -388,7 +363,7 @@ class BorrowRecordApi {
                 requestBody.code = params.code;
             }
 
-            const response = await fetch(`${API_BASE_URL}/borrow-record/update-borrow-record`, {
+            const response = await fetch(`${endpointBE}/borrow-record/update-borrow-record`, {
                 method: "PUT",
                 headers: this.getHeaders(true),
                 body: JSON.stringify(requestBody),
@@ -409,7 +384,7 @@ class BorrowRecordApi {
      */
     public async updateBookReturnStatus(params: UpdateBookReturnParams): Promise<void> {
         try {
-            const response = await fetch(`${API_BASE_URL}/borrow-record/return-1-book`, {
+            const response = await fetch(`${endpointBE}/borrow-record/return-1-book`, {
                 method: "PUT",
                 headers: this.getHeaders(true),
                 body: JSON.stringify(params),
@@ -446,7 +421,7 @@ class BorrowRecordApi {
 
 export default new BorrowRecordApi();
 
-// Function to create a new borrow record
+// Legacy functions for backward compatibility
 export async function createBorrowRecord(borrowRecordData: any): Promise<any> {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -475,7 +450,6 @@ export async function createBorrowRecord(borrowRecordData: any): Promise<any> {
     }
 }
 
-// Function to get all borrow records for the current user
 export async function getUserBorrowRecords(): Promise<BorrowRecordModel[]> {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -490,8 +464,6 @@ export async function getUserBorrowRecords(): Promise<BorrowRecordModel[]> {
         }
 
         const cardNumber = userResponse.cardNumber;
-
-        // If the user has a library card, get all borrow records associated with it
         const response = await request(`${endpointBE}/borrow-records/search/findBorrowRecordsByLibraryCard_CardNumber?cardNumber=${cardNumber}`);
 
         return response._embedded?.borrowRecords.map((record: any) => ({
@@ -509,7 +481,6 @@ export async function getUserBorrowRecords(): Promise<BorrowRecordModel[]> {
     }
 }
 
-// Function to get all details for a specific borrow record
 export async function getBorrowRecordDetails(borrowRecordId: number): Promise<BorrowRecordDetailModel[]> {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -519,7 +490,6 @@ export async function getBorrowRecordDetails(borrowRecordId: number): Promise<Bo
     try {
         const response = await request(`${endpointBE}/borrow-records/${borrowRecordId}/borrowRecordDetails`);
 
-        // Fetch book item details for each borrow record detail
         const detailsWithBookItems = await Promise.all(
             response._embedded?.borrowRecordDetails.map(async (detail: any) => {
                 const bookItemResponse = await request(detail._links.bookItem.href);
@@ -546,7 +516,6 @@ export async function getBorrowRecordDetails(borrowRecordId: number): Promise<Bo
     }
 }
 
-// Function to cancel a borrow record
 export async function cancelBorrowRecord(borrowRecordId: any): Promise<any> {
     const id = Number(borrowRecordId);
 
