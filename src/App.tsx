@@ -32,8 +32,8 @@ import { ForgotPassword } from "./layouts/user/ForgotPassword";
 import { CartItemProvider } from "./layouts/utils/CartItemContext";
 import { BorrowCartProvider } from "./layouts/utils/BorrowCartContext";
 import CheckoutStatus from "./layouts/pages/CheckoutStatus";
-import BorrowRecordsPage from "./layouts/pages/BorrowRecordPage";
-import BorrowCartPage from "./layouts/pages/BorrowCartPage";
+import BorrowRecordsPage from './layouts/pages/BorrowRecordsPage';
+import BorrowCartPage from './layouts/pages/BorrowCartPage';
 import BorrowRecordManagementPage from "./admin/BorrowRecordManagement";
 // Import new library card management components
 import LibraryCardManagementPage from "./admin/LibraryCardManagement";
