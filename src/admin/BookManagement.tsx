@@ -4,7 +4,7 @@ import { BookTable } from "./components/book/BookTable";
 import AddIcon from "@mui/icons-material/Add";
 import Button from "@mui/material/Button";
 import { FadeModal } from "../layouts/utils/FadeModal";
-import RequireAdmin from "./RequireAdmin";
+import RequireAdminOrStaff from "./RequireAdminOrStaff";
 
 const BookManagement: React.FC = () => {
 	// Tạo ra biến để mỗi khi thao tác CRUD thì sẽ update lại table
@@ -59,5 +59,5 @@ const BookManagement: React.FC = () => {
 	);
 };
 
-const BookManagementPage = RequireAdmin(BookManagement);
+const BookManagementPage = RequireAdminOrStaff(BookManagement);
 export default BookManagementPage;

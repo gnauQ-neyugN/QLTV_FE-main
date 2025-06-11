@@ -33,7 +33,7 @@ import SecurityIcon from "@mui/icons-material/Security";
 import PersonIcon from "@mui/icons-material/Person";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { toast } from "react-toastify";
-import RequireAdmin from "./RequireAdmin";
+import RequireAdminOrStaff from "./RequireAdminOrStaff";
 import { getAllUserRole } from "../api/UserApi";
 import { getAllRoles } from "../api/RoleApi";
 import RoleModel from "../model/RoleModel";
@@ -114,6 +114,7 @@ const RoleManagement = () => {
     };
 
     // Update user role
+    // Update user role - Fixed version
     const handleUpdateRole = async () => {
         if (!selectedUser || !newRole) {
             toast.error("Vui lòng chọn vai trò");
@@ -128,14 +129,13 @@ const RoleManagement = () => {
                 return;
             }
 
-            // Prepare user data for update
+            // Option 1: Use the new updateUserRoles endpoint
             const userData = {
-                ...selectedUser,
-                role: newRole,
-                dateOfBirth: selectedUser.dateOfBirth.toISOString().split('T')[0] + 'T00:00:00.000Z'
+                idUser: selectedUser.idUser,
+                roles: [newRole] // Array of role IDs
             };
 
-            const response = await fetch(`${endpointBE}/user/update-user`, {
+            const response = await fetch(`${endpointBE}/user/update-roles`, {
                 method: "PUT",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -145,14 +145,16 @@ const RoleManagement = () => {
             });
 
             if (!response.ok) {
-                throw new Error("Failed to update user role");
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Failed to update user role");
             }
 
-            toast.success("Cập nhật vai trò thành công");
+            const result = await response.json();
+            toast.success(result.message || "Cập nhật vai trò thành công");
             handleCloseDialog();
             fetchData(); // Refresh data
+
         } catch (error) {
-            console.error("Error updating user role:", error);
             toast.error("Lỗi khi cập nhật vai trò");
         } finally {
             setSubmitting(false);
@@ -419,24 +421,6 @@ const RoleManagement = () => {
                                     ))}
                                 </Select>
                             </FormControl>
-
-                            {newRole !== 0 && (
-                                <Alert
-                                    severity={
-                                        roles.find(r => r.idRole === newRole)?.nameRole === "ADMIN"
-                                            ? "warning"
-                                            : "info"
-                                    }
-                                    sx={{ mt: 2 }}
-                                >
-                                    <Typography variant="body2">
-                                        {roles.find(r => r.idRole === newRole)?.nameRole === "ADMIN"
-                                            ? "⚠️ Bạn đang cấp quyền quản trị viên cho người dùng này. Họ sẽ có toàn quyền truy cập vào hệ thống!"
-                                            : "ℹ️ Người dùng sẽ có quyền truy cập với vai trò khách hàng."
-                                        }
-                                    </Typography>
-                                </Alert>
-                            )}
                         </Box>
                     )}
                 </DialogContent>
@@ -463,6 +447,6 @@ const RoleManagement = () => {
     );
 };
 
-// Wrap component with RequireAdmin HOC to ensure only admins can access
-const RoleManagementPage = RequireAdmin(RoleManagement);
+// Wrap component with RequireAdminOrStaff HOC to ensure only admins can access
+const RoleManagementPage = RequireAdminOrStaff(RoleManagement);
 export default RoleManagementPage;

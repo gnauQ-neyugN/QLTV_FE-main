@@ -1,4 +1,4 @@
-import RequireAdmin from "./RequireAdmin";
+import RequireAdminOrStaff from "./RequireAdminOrStaff";
 import { FeedbackTable } from "./components/feedback/FeedbackTable";
 
 const FeedbackManagement = () => {
@@ -11,5 +11,5 @@ const FeedbackManagement = () => {
 	);
 };
 
-const FeedbackPage = RequireAdmin(FeedbackManagement);
+const FeedbackPage = RequireAdminOrStaff(FeedbackManagement);
 export default FeedbackPage;

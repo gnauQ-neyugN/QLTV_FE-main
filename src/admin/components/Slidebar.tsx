@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect, useState } from "react";
 import PersonIcon from "@mui/icons-material/Person";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
@@ -13,13 +13,60 @@ import { logout } from "../../layouts/utils/JwtService";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../layouts/utils/AuthContext";
 import { useCartItem } from "../../layouts/utils/CartItemContext";
+import { hasPermission } from "../AdminPermissions";
+import {jwtDecode} from "jwt-decode";
 
 interface SlidebarProps {}
+
+interface JwtPayload {
+	id: any;
+	role: string;
+	avatar: string;
+	lastName: string;
+	enabled: boolean;
+}
 
 export const Slidebar: React.FC<SlidebarProps> = (props) => {
 	const { setCartList } = useCartItem();
 	const { setLoggedIn } = useAuth();
 	const navigate = useNavigate();
+	const [userRole, setUserRole] = useState<string>("");
+
+	// Lấy role từ token
+	useEffect(() => {
+		const token = localStorage.getItem("token");
+		if (token) {
+			try {
+				const decodedToken = jwtDecode(token) as JwtPayload;
+				setUserRole(decodedToken.role);
+			} catch (error) {
+				console.error("Error decoding token:", error);
+			}
+		}
+	}, []);
+
+	// Kiểm tra quyền truy cập menu
+	const hasAccess = (menuItem: string): boolean => {
+		if (userRole === "ADMIN") {
+			return true; // Admin có quyền truy cập tất cả
+		}
+
+		if (userRole === "STAFF") {
+			// Staff chỉ có quyền truy cập các menu được chỉ định
+			const staffAllowedMenus = [
+				"book", // Quản lý sách
+				"genre", // Quản lý thể loại
+				"user", // Quản lý tài khoản
+				"order", // Quản lý đơn hàng
+				"borrow", // Quản lý mượn trả
+				"library-card" // Quản lý thẻ thư viện
+			];
+			return staffAllowedMenus.includes(menuItem);
+		}
+
+		return false;
+	};
+
 	return (
 		<div
 			className="position-fixed overflow-auto bg-primary min-vh-100"
@@ -37,116 +84,155 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 					</a>
 					<hr className='text-white d-none d-sm-block d-md-block' />
 					<ul className='nav nav-pills flex-column' id='parentM'>
-						<li className='nav-item'>
-							<NavLink
-								to={"/admin/dashboard"}
-								className={`nav-link d-flex align-items-center justify-content-center`}
-							>
-								<DashboardIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
-									Dashboard
-								</span>
-							</NavLink>
-						</li>
-						<li className='nav-item'>
-							<NavLink
-								to={"/admin/book"}
-								className={`nav-link d-flex align-items-center justify-content-center`}
-							>
-								<MenuBookRoundedIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
-									Quản lý Sách
-								</span>
-							</NavLink>
-						</li>
-						<li className='nav-item '>
-							<NavLink
-								to={"/admin/genre"}
-								className={`nav-link d-flex align-items-center justify-content-center`}
-							>
-								<CategoryRoundedIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
-									Quản lý thể loại
-								</span>
-							</NavLink>
-						</li>
-						<li className='nav-item '>
-							<NavLink
-								to={"/admin/user"}
-								className={`nav-link d-flex align-items-center justify-content-center`}
-							>
-								<ManageAccountsIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
-									Quản lý tài khoản
-								</span>
-							</NavLink>
-						</li>
-						<li className='nav-item '>
-							<NavLink
-								to={"/admin/role-management"}
-								className={`nav-link d-flex align-items-center justify-content-center`}
-							>
-								<SecurityIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
+						{/* Dashboard - Sử dụng permission system */}
+						{hasPermission(userRole, "dashboard") && (
+							<li className='nav-item'>
+								<NavLink
+									to={"/admin/dashboard"}
+									className={`nav-link d-flex align-items-center justify-content-center`}
+								>
+									<DashboardIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Dashboard
+									</span>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Quản lý Sách - Sử dụng permission system */}
+						{hasPermission(userRole, "book") && (
+							<li className='nav-item'>
+								<NavLink
+									to={"/admin/book"}
+									className={`nav-link d-flex align-items-center justify-content-center`}
+								>
+									<MenuBookRoundedIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Quản lý Sách
+									</span>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Quản lý thể loại - Sử dụng permission system */}
+						{hasPermission(userRole, "genre") && (
+							<li className='nav-item '>
+								<NavLink
+									to={"/admin/genre"}
+									className={`nav-link d-flex align-items-center justify-content-center`}
+								>
+									<CategoryRoundedIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Quản lý thể loại
+									</span>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Quản lý tài khoản - Sử dụng permission system */}
+						{hasPermission(userRole, "user") && (
+							<li className='nav-item '>
+								<NavLink
+									to={"/admin/user"}
+									className={`nav-link d-flex align-items-center justify-content-center`}
+								>
+									<ManageAccountsIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Quản lý tài khoản
+									</span>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Quản lý phaan quyeenf - Sử dụng permission system */}
+						{hasPermission(userRole, "role-management") && (
+							<li className='nav-item '>
+								<NavLink
+									to={"/admin/role-management"}
+									className={`nav-link d-flex align-items-center justify-content-center`}
+								>
+									<SecurityIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 									Quản lý phân quyền
 								</span>
-							</NavLink>
-						</li>
-						<li className='nav-item '>
-							<NavLink
-								to={"/admin/order"}
-								className={`nav-link d-flex align-items-center justify-content-center `}
-							>
-								<LocalMallRoundedIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
-									Quản lý đơn hàng
-								</span>
-							</NavLink>
-						</li>
-						<li className='nav-item '>
-							<NavLink
-								to={"/admin/borrow"}
-								className={`nav-link d-flex align-items-center justify-content-center `}
-							>
-								<LocalMallRoundedIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
-									Quản lý mượn trả
-								</span>
-							</NavLink>
-						</li>
-						<li className='nav-item '>
-							<NavLink
-								to={"/admin/library-card"}
-								className={`nav-link d-flex align-items-center justify-content-center `}
-							>
-								<CreditCardIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
-									Quản lý thẻ thư viện
-								</span>
-							</NavLink>
-						</li>
-						<li className='nav-item '>
-							<NavLink
-								to={"/admin/violation-types"}
-								className={`nav-link d-flex align-items-center justify-content-center `}
-							>
-								<ReportProblemIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
-									Quản lý vi phạm
-								</span>
-							</NavLink>
-						</li>
-						<li className='nav-item '>
-							<NavLink
-								to={"/admin/feedback"}
-								className={`nav-link d-flex align-items-center justify-content-center `}
-							>
-								<FeedbackIcon fontSize='small' />
-								<span className='ms-2 d-none d-sm-inline d-md-inline'>
-									Feedback
-								</span>
-							</NavLink>
-						</li>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Quản lý đơn hàng - Sử dụng permission system */}
+						{hasPermission(userRole, "order") && (
+							<li className='nav-item '>
+								<NavLink
+									to={"/admin/order"}
+									className={`nav-link d-flex align-items-center justify-content-center `}
+								>
+									<LocalMallRoundedIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Quản lý đơn hàng
+									</span>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Quản lý mượn trả - Sử dụng permission system */}
+						{hasPermission(userRole, "borrow") && (
+							<li className='nav-item '>
+								<NavLink
+									to={"/admin/borrow"}
+									className={`nav-link d-flex align-items-center justify-content-center `}
+								>
+									<LocalMallRoundedIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Quản lý mượn trả
+									</span>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Quản lý thẻ thư viện - Sử dụng permission system */}
+						{hasPermission(userRole, "library-card") && (
+							<li className='nav-item '>
+								<NavLink
+									to={"/admin/library-card"}
+									className={`nav-link d-flex align-items-center justify-content-center `}
+								>
+									<CreditCardIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Quản lý thẻ thư viện
+									</span>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Quản lý vi phạm - Sử dụng permission system */}
+						{hasPermission(userRole, "violation-types") && (
+							<li className='nav-item '>
+								<NavLink
+									to={"/admin/violation-types"}
+									className={`nav-link d-flex align-items-center justify-content-center `}
+								>
+									<ReportProblemIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Quản lý vi phạm
+									</span>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Feedback - Sử dụng permission system */}
+						{hasPermission(userRole, "feedback") && (
+							<li className='nav-item '>
+								<NavLink
+									to={"/admin/feedback"}
+									className={`nav-link d-flex align-items-center justify-content-center `}
+								>
+									<FeedbackIcon fontSize='small' />
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Feedback
+									</span>
+								</NavLink>
+							</li>
+						)}
 					</ul>
 				</div>
 				<div className='dropdown open text-center mb-3'>
@@ -159,7 +245,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 						aria-expanded='false'
 					>
 						<PersonIcon fontSize='small' />
-						<span className='ms-2'>ADMIN</span>
+						<span className='ms-2'>{userRole}</span>
 					</a>
 					<div className='dropdown-menu' aria-labelledby='triggerId'>
 						<Link

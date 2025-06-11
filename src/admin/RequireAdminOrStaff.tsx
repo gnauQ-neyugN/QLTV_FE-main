@@ -10,10 +10,11 @@ export interface JwtPayload {
 	enabled: boolean;
 }
 
-const RequireAdmin = <P extends object>(
+// Higher Order Component để kiểm tra quyền Admin hoặc Staff
+const RequireAdminOrStaff = <P extends object>(
 	WrappedComponent: React.ComponentType<P>
 ) => {
-	const WithAdminCheck: React.FC<P> = (props) => {
+	const WithAdminOrStaffCheck: React.FC<P> = (props) => {
 		const navigate = useNavigate();
 
 		useEffect(() => {
@@ -31,15 +32,15 @@ const RequireAdmin = <P extends object>(
 			// Lấy thông tin từ token đó
 			const role = decodedToken.role;
 
-			// Kiểm tra quyền
-			if (role !== "ADMIN") {
+			// Kiểm tra quyền - cho phép cả ADMIN và STAFF
+			if (role !== "ADMIN" && role !== "STAFF") {
 				navigate("/error-403");
 			}
 		}, [navigate]);
 
 		return <WrappedComponent {...props} />;
 	};
-	return WithAdminCheck || null;
+	return WithAdminOrStaffCheck || null;
 };
 
-export default RequireAdmin;
+export default RequireAdminOrStaff;

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { OrderTable } from "./components/order/OrderTable";
 import { FadeModal } from "../layouts/utils/FadeModal";
 import { OrderForm } from "./components/order/OrderForm";
-import RequireAdmin from "./RequireAdmin";
+import RequireAdminOrStaff from "./RequireAdminOrStaff";
 
 const OrderManagement = () => {
 	// Tạo ra biến để mỗi khi thao tác CRUD thì sẽ update lại table
@@ -43,5 +43,5 @@ const OrderManagement = () => {
 	);
 };
 
-const OrderManagementPage = RequireAdmin(OrderManagement);
+const OrderManagementPage = RequireAdminOrStaff(OrderManagement);
 export default OrderManagementPage;

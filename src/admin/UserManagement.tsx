@@ -4,7 +4,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { UserTable } from "./components/user/UserTable";
 import { UserForm } from "./components/user/UserForm";
 import { FadeModal } from "../layouts/utils/FadeModal";
-import RequireAdmin from "./RequireAdmin";
+import RequireAdminOrStaff from "./RequireAdminOrStaff";
 
 const UserManagement = () => {
 	// Tạo ra biến để mỗi khi thao tác CRUD thì sẽ update lại table
@@ -59,5 +59,5 @@ const UserManagement = () => {
 	);
 };
 
-const UserManagementPage = RequireAdmin(UserManagement);
+const UserManagementPage = RequireAdminOrStaff(UserManagement);
 export default UserManagementPage;

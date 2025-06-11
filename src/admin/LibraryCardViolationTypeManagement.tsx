@@ -26,7 +26,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { toast } from "react-toastify";
-import RequireAdmin from "./RequireAdmin";
+import RequireAdminOrStaff from "./RequireAdminOrStaff";
 import { endpointBE } from "../layouts/utils/Constant";
 
 // Define interfaces
@@ -424,6 +424,6 @@ const LibraryViolationTypeManagement = () => {
     );
 };
 
-// Wrap component with RequireAdmin HOC to ensure only admins can access
-const LibraryViolationTypeManagementPage = RequireAdmin(LibraryViolationTypeManagement);
+// Wrap component with RequireAdminOrStaff HOC to ensure only admins can access
+const LibraryViolationTypeManagementPage = RequireAdminOrStaff(LibraryViolationTypeManagement);
 export default LibraryViolationTypeManagementPage;

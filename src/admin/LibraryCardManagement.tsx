@@ -14,7 +14,7 @@ import {
     Typography
 } from "@mui/material";
 import { toast } from "react-toastify";
-import RequireAdmin from "./RequireAdmin";
+import RequireAdminOrStaff from "./RequireAdminOrStaff";
 import LibraryCardApi, { LibraryCard } from "../api/LibraryCardApi";
 import LibraryCardTable from "./components/libarycard/LibraryCardTable";
 import LibraryCardForms from "./components/libarycard/LibraryCardForms";
@@ -374,6 +374,6 @@ const LibraryCardManagement = () => {
     );
 };
 
-// Wrap component with RequireAdmin HOC to ensure only admins can access
-const LibraryCardManagementPage = RequireAdmin(LibraryCardManagement);
+// Wrap component with RequireAdminOrStaff HOC to ensure only admins can access
+const LibraryCardManagementPage = RequireAdminOrStaff(LibraryCardManagement);
 export default LibraryCardManagementPage;

@@ -3,7 +3,7 @@ import { BorrowRecordTable } from "./components/borrowRecord/BorrowRecordTable";
 import { FadeModal } from "../layouts/utils/FadeModal";
 import { BorrowRecordForm } from "./components/borrowRecord/BorrowRecordForm";
 import BorrowRecordCreate from "./components/borrowRecord/BorrowRecordCreate";
-import RequireAdmin from "./RequireAdmin";
+import RequireAdminOrStaff from "./RequireAdminOrStaff";
 import { Button } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 
@@ -77,5 +77,5 @@ const BorrowRecordManagement = () => {
     );
 };
 
-const BorrowRecordManagementPage = RequireAdmin(BorrowRecordManagement);
+const BorrowRecordManagementPage = RequireAdminOrStaff(BorrowRecordManagement);
 export default BorrowRecordManagementPage;

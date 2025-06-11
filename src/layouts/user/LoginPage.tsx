@@ -3,7 +3,7 @@ import { jwtDecode } from "jwt-decode";
 import React, { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { JwtPayload } from "../../admin/RequireAdmin";
+import { JwtPayload } from "../../admin/RequireAdminOrStaff";
 import { endpointBE } from "../utils/Constant";
 import CartItemModel from "../../model/CartItemModel";
 import { getCartAllByIdUser } from "../../api/CartApi";

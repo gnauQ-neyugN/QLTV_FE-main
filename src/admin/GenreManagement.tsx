@@ -4,7 +4,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { GenreTable } from "./components/genre/GenreTable";
 import { FadeModal } from "../layouts/utils/FadeModal";
 import { GenreForm } from "./components/genre/GenreForm";
-import RequireAdmin from "./RequireAdmin";
+import RequireAdminOrStaff from "./RequireAdminOrStaff";
 
 const GenreManagement = () => {
 	// Tạo ra biến để mỗi khi thao tác CRUD thì sẽ update lại table
@@ -60,5 +60,5 @@ const GenreManagement = () => {
 	);
 };
 
-const GenreManagementPage = RequireAdmin(GenreManagement);
+const GenreManagementPage = RequireAdminOrStaff(GenreManagement);
 export default GenreManagementPage;

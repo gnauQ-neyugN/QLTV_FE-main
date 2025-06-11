@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import GenreModel from "../../model/GenreModel";
 import { getAllGenres } from "../../api/GenreApi";
-import { AdminEnpoint } from "../../admin/AdminEnpoint";
+import { AdminEndpoint } from "../../admin/AdminEnpoint";
 import {
 	getAvatarByToken,
 	getLastNameByToken,
@@ -43,7 +43,7 @@ const Navbar: React.FC<NavbarProps> = (props) => {
 	}
 
 	const location = useLocation();
-	const adminEnpoint = AdminEnpoint; // Thêm các path bạn muốn ẩn Navbar vào đây
+	const adminEnpoint = AdminEndpoint; // Thêm các path bạn muốn ẩn Navbar vào đây
 
 	if (adminEnpoint.includes(location.pathname)) {
 		return null; // Nếu location.pathname nằm trong danh sách ẩn, trả về null để ẩn Navbar

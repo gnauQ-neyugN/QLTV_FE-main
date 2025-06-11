@@ -1,10 +1,10 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { AdminEnpoint } from "../../admin/AdminEnpoint";
+import { AdminEndpoint } from "../../admin/AdminEnpoint";
 
 function Footer() {
 	const location = useLocation();
-	const adminEnpoint = AdminEnpoint; // Thêm các path bạn muốn ẩn Navbar vào đây
+	const adminEnpoint = AdminEndpoint; // Thêm các path bạn muốn ẩn Navbar vào đây
 
 	if (adminEnpoint.includes(location.pathname)) {
 		return null; // Nếu location.pathname nằm trong danh sách ẩn, trả về null để ẩn Navbar
