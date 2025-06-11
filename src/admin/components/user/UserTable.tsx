@@ -1,14 +1,23 @@
 import { DeleteOutlineOutlined } from "@mui/icons-material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import SecurityIcon from "@mui/icons-material/Security";
 import {
 	Box,
 	Chip,
 	CircularProgress,
 	IconButton,
 	Tooltip,
+	TextField,
+	InputAdornment,
+	FormControl,
+	InputLabel,
+	Select,
+	MenuItem,
+	Alert,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import { GridColDef } from "@mui/x-data-grid";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { DataTable } from "../../../layouts/utils/DataTable";
 import UserModel from "../../../model/UserModel";
 import { getAllUserRole } from "../../../api/UserApi";
@@ -26,6 +35,10 @@ interface UserTableProps {
 
 export const UserTable: React.FC<UserTableProps> = (props) => {
 	const [loading, setLoading] = useState(true);
+	const [searchTerm, setSearchTerm] = useState("");
+	const [roleFilter, setRoleFilter] = useState("all");
+	const [statusFilter, setStatusFilter] = useState("all");
+
 	// Tạo biến để lấy tất cả data
 	const [data, setData] = useState<UserModel[]>([]);
 
@@ -35,7 +48,7 @@ export const UserTable: React.FC<UserTableProps> = (props) => {
 	function handleDeleteUser(idUser: any) {
 		const token = localStorage.getItem("token");
 		confirm({
-			title: "Xoá sách",
+			title: "Xoá người dùng",
 			description: `Bạn chắc chắn xoá người dùng này chứ?`,
 			confirmationText: ["Xoá"],
 			cancellationText: ["Huỷ"],
@@ -76,8 +89,47 @@ export const UserTable: React.FC<UserTableProps> = (props) => {
 				setData(users);
 				setLoading(false);
 			})
-			.catch((error) => console.log(error));
+			.catch((error) => {
+				console.log(error);
+				setLoading(false);
+			});
 	}, [props.keyCountReload]);
+
+	// Lọc dữ liệu dựa trên search term và filters
+	const filteredData = useMemo(() => {
+		return data.filter((user) => {
+			const matchesSearch = searchTerm === "" ||
+				user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				(user.firstName + " " + user.lastName).toLowerCase().includes(searchTerm.toLowerCase());
+
+			const userRoleString = typeof user.role === 'string' ? user.role : String(user.role || '');
+			const matchesRole = roleFilter === "all" || userRoleString === roleFilter;
+			const matchesStatus = statusFilter === "all" ||
+				(statusFilter === "active" && user.enabled) ||
+				(statusFilter === "inactive" && !user.enabled);
+
+			return matchesSearch && matchesRole && matchesStatus;
+		});
+	}, [data, searchTerm, roleFilter, statusFilter]);
+
+	// Lấy danh sách role duy nhất
+	const uniqueRoles = useMemo(() => {
+		const roleSet = new Set(data.map(user => typeof user.role === 'string' ? user.role : String(user.role || '')));
+		const roles = Array.from(roleSet);
+		return roles.filter(role => role); // Loại bỏ undefined/null/empty string
+	}, [data]);
+
+	// Thống kê người dùng
+	const userStats = useMemo(() => {
+		const total = data.length;
+		const active = data.filter(user => user.enabled).length;
+		const getRoleString = (role: string | number | undefined) => typeof role === 'string' ? role : String(role || '');
+		const admins = data.filter(user => getRoleString(user.role) === "ADMIN").length;
+		const customers = data.filter(user => getRoleString(user.role) === "CUSTOMER").length;
+
+		return { total, active, inactive: total - active, admins, customers };
+	}, [data]);
 
 	const columns: GridColDef[] = [
 		{ field: "id", headerName: "ID", width: 50 },
@@ -87,11 +139,26 @@ export const UserTable: React.FC<UserTableProps> = (props) => {
 			headerName: "VAI TRÒ",
 			width: 150,
 			renderCell: (params) => {
+				const getRoleColor = (role: string | number | undefined) => {
+					const roleString = typeof role === 'string' ? role : String(role || '');
+					switch (roleString) {
+						case "ADMIN":
+							return "error";
+						case "CUSTOMER":
+							return "success";
+						default:
+							return "default";
+					}
+				};
+
+				const roleValue = typeof params.value === 'string' ? params.value : String(params.value || '');
+
 				return (
 					<Chip
-						label={params.value}
-						color={params.value === "CUSTOMER" ? "success" : "error"}
-						variant='outlined'
+						label={roleValue}
+						color={getRoleColor(params.value) as any}
+						variant="outlined"
+						size="small"
 					/>
 				);
 			},
@@ -104,7 +171,21 @@ export const UserTable: React.FC<UserTableProps> = (props) => {
 		},
 		{ field: "email", headerName: "EMAIL", width: 200 },
 		{ field: "phoneNumber", headerName: "SỐ ĐIỆN THOẠI", width: 120 },
-
+		{
+			field: "enabled",
+			headerName: "TRẠNG THÁI",
+			width: 120,
+			renderCell: (params) => {
+				return (
+					<Chip
+						label={params.value ? "Đã kích hoạt" : "Chưa kích hoạt"}
+						color={params.value ? "success" : "warning"}
+						variant="outlined"
+						size="small"
+					/>
+				);
+			},
+		},
 		{
 			field: "action",
 			headerName: "HÀNH ĐỘNG",
@@ -153,5 +234,103 @@ export const UserTable: React.FC<UserTableProps> = (props) => {
 		);
 	}
 
-	return <DataTable columns={columns} rows={data} />;
+	return (
+		<Box>
+			{/* Thống kê tổng quan */}
+			<Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+				<Alert severity="info" sx={{ flexGrow: 1 }}>
+					<strong>Thống kê:</strong> Tổng {userStats.total} người dùng |
+					Đã kích hoạt: {userStats.active} |
+					Chưa kích hoạt: {userStats.inactive} |
+					Admin: {userStats.admins} |
+					Khách hàng: {userStats.customers}
+				</Alert>
+			</Box>
+
+			{/* Thanh tìm kiếm và bộ lọc */}
+			<Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+				<TextField
+					placeholder="Tìm kiếm theo tên, username hoặc email..."
+					value={searchTerm}
+					onChange={(e) => setSearchTerm(e.target.value)}
+					InputProps={{
+						startAdornment: (
+							<InputAdornment position="start">
+								<SearchIcon />
+							</InputAdornment>
+						),
+					}}
+					sx={{ minWidth: 300, flexGrow: 1 }}
+					size="small"
+				/>
+
+				<FormControl sx={{ minWidth: 150 }} size="small">
+					<InputLabel>Vai trò</InputLabel>
+					<Select
+						value={roleFilter}
+						label="Vai trò"
+						onChange={(e) => setRoleFilter(e.target.value)}
+					>
+						<MenuItem value="all">Tất cả</MenuItem>
+						{uniqueRoles.map((role) => (
+							<MenuItem key={role} value={role}>
+								{role}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+
+				<FormControl sx={{ minWidth: 150 }} size="small">
+					<InputLabel>Trạng thái</InputLabel>
+					<Select
+						value={statusFilter}
+						label="Trạng thái"
+						onChange={(e) => setStatusFilter(e.target.value)}
+					>
+						<MenuItem value="all">Tất cả</MenuItem>
+						<MenuItem value="active">Đã kích hoạt</MenuItem>
+						<MenuItem value="inactive">Chưa kích hoạt</MenuItem>
+					</Select>
+				</FormControl>
+			</Box>
+
+			{/* Bảng dữ liệu */}
+			<DataTable columns={columns} rows={filteredData} />
+
+			{/* Thông tin kết quả tìm kiếm */}
+			<Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+				<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+					<span>
+						Hiển thị {filteredData.length} / {data.length} người dùng
+					</span>
+					{(searchTerm || roleFilter !== "all" || statusFilter !== "all") && (
+						<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+							<span style={{ fontSize: '0.875rem', color: '#666' }}>Bộ lọc đang áp dụng:</span>
+							{searchTerm && (
+								<Chip
+									label={`Tìm kiếm: "${searchTerm}"`}
+									size="small"
+									onDelete={() => setSearchTerm("")}
+								/>
+							)}
+							{roleFilter !== "all" && (
+								<Chip
+									label={`Vai trò: ${roleFilter}`}
+									size="small"
+									onDelete={() => setRoleFilter("all")}
+								/>
+							)}
+							{statusFilter !== "all" && (
+								<Chip
+									label={`Trạng thái: ${statusFilter === "active" ? "Đã kích hoạt" : "Chưa kích hoạt"}`}
+									size="small"
+									onDelete={() => setStatusFilter("all")}
+								/>
+							)}
+						</Box>
+					)}
+				</Box>
+			</Box>
+		</Box>
+	);
 };

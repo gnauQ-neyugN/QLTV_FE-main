@@ -4,6 +4,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
+import SecurityIcon from "@mui/icons-material/Security";
 import LocalMallRoundedIcon from "@mui/icons-material/LocalMallRounded";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
@@ -77,6 +78,17 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 								<ManageAccountsIcon fontSize='small' />
 								<span className='ms-2 d-none d-sm-inline d-md-inline'>
 									Quản lý tài khoản
+								</span>
+							</NavLink>
+						</li>
+						<li className='nav-item '>
+							<NavLink
+								to={"/admin/role-management"}
+								className={`nav-link d-flex align-items-center justify-content-center`}
+							>
+								<SecurityIcon fontSize='small' />
+								<span className='ms-2 d-none d-sm-inline d-md-inline'>
+									Quản lý phân quyền
 								</span>
 							</NavLink>
 						</li>

@@ -28,6 +28,7 @@ export async function getAllUserRole(): Promise<UserModel[]> {
             phoneNumber: userData.phoneNumber,
             username: userData.username,
             role: roleData.nameRole,
+            enabled: userData.enabled,
          };
          return user;
       }) ?? []; // Nếu listUsers là undefined, trả về mảng rỗng

@@ -37,10 +37,26 @@
     import { endpointBE } from '../utils/Constant';
     import { getIdUserByToken } from '../utils/JwtService';
     import CartItemModel from '../../model/CartItemModel';
+    import BookItemModel from "../../model/BookItemModel";
     
     interface BorrowCartPageProps {}
-    
+
+    interface BookItemResponse {
+        idBookItem: number;
+        barcode: string;
+        status: string;
+        location: string;
+        condition: number;
+    }
+
+    interface AvailableBookItemsResponse {
+        _embedded?: {
+            bookItems: BookItemResponse[];
+        };
+    }
+
     const BorrowCartPage: React.FC<BorrowCartPageProps> = () => {
+
         useScrollToTop();
         const { isLoggedIn } = useAuth();
         const navigate = useNavigate();
@@ -111,41 +127,87 @@
         };
     
         // Handle submit borrow request
+
+
         const handleSubmitBorrowRequest = async () => {
             if (!libraryCard || !libraryCard.activated) {
                 toast.error('Bạn cần có thẻ thư viện đã kích hoạt để mượn sách');
                 return;
             }
-    
+
             try {
                 setSubmitting(true);
-    
-                // Prepare book items data
-                const bookItems = borrowCartList.flatMap(cartItem =>
-                    Array.from({ length: cartItem.quantity }, () => ({
-                        idBookItem: cartItem.book.idBook, // This should be the actual book item ID
-                        book: cartItem.book
-                    }))
-                );
-    
+
+                // Lấy danh sách BookItem available cho từng sách
+                const bookItems: { idBookItem: number }[] = [];
+
+                for (const cartItem of borrowCartList) {
+                    try {
+                        // Gọi API để lấy BookItem available
+                        const response = await fetch(
+                            `${endpointBE}/book/book-items/available/${cartItem.book.idBook}?limit=${cartItem.quantity}`,
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            }
+                        );
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+
+                        const availableItems: AvailableBookItemsResponse = await response.json();
+
+                        // Xử lý response dựa trên cấu trúc API
+                        let bookItemsArray: BookItemResponse[] = [];
+
+                        if (availableItems._embedded?.bookItems) {
+                            // Nếu API trả về format Spring Data REST
+                            bookItemsArray = availableItems._embedded.bookItems;
+                        } else if (Array.isArray(availableItems)) {
+                            // Nếu API trả về array trực tiếp
+                            bookItemsArray = availableItems as BookItemResponse[];
+                        }
+
+                        if (bookItemsArray.length < cartItem.quantity) {
+                            toast.error(`Không đủ sách "${cartItem.book.nameBook}" để mượn. Chỉ còn ${bookItemsArray.length} quyển.`);
+                            return;
+                        }
+
+                        // Thêm BookItem thực tế vào danh sách
+                        for (let i = 0; i < cartItem.quantity; i++) {
+                            bookItems.push({
+                                idBookItem: bookItemsArray[i].idBookItem
+                            });
+                        }
+
+                    } catch (error) {
+                        console.error(`Error fetching available books for ${cartItem.book.nameBook}:`, error);
+                        toast.error(`Không thể kiểm tra sách "${cartItem.book.nameBook}". Vui lòng thử lại.`);
+                        return;
+                    }
+                }
+
                 const borrowRecordData = {
                     idLibraryCard: libraryCard.idLibraryCard,
                     notes: notes.trim(),
-                    bookItem: bookItems.map(item => ({ idBookItem: item.idBookItem }))
+                    bookItem: bookItems
                 };
 
                 await createBorrowRecord(borrowRecordData);
-    
+
                 // Clear borrow cart
                 setBorrowCartList([]);
                 setTotalBorrowItems(0);
                 localStorage.removeItem('borrowCart');
                 setSubmitDialogOpen(false);
                 setNotes('');
-    
+
                 toast.success('Đã gửi yêu cầu mượn sách thành công!');
                 navigate('/borrow-records');
-    
+
             } catch (error) {
                 console.error('Error submitting borrow request:', error);
                 toast.error('Không thể gửi yêu cầu mượn sách. Vui lòng thử lại.');

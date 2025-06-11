@@ -1,26 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import {
     Box,
-    Card,
-    CardContent,
     Typography,
     Chip,
     IconButton,
-    Collapse,
     Button,
     Dialog,
     DialogTitle,
     DialogContent,
     DialogActions,
     Alert,
-    Grid,
-    Divider,
-    List,
-    ListItem,
-    ListItemText,
     CircularProgress,
     Container,
-    Paper
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Collapse,
+    Divider,
+    Grid
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
@@ -61,8 +62,8 @@ interface UnifiedBorrowRecordDetail {
         condition: number;
         book: {
             idBook: number;
-            nameBook?: string; // Cho phép undefined
-            author?: string;   // Cho phép undefined
+            nameBook?: string;
+            author?: string;
         };
     };
     violationType?: {
@@ -122,14 +123,12 @@ const BorrowRecordsPage: React.FC<BorrowRecordsPageProps> = () => {
     // Fetch details for a specific record
     const fetchRecordDetails = async (recordId: number) => {
         if (recordDetails[recordId]) {
-            return; // Already fetched
+            return;
         }
 
         try {
             const details = await getBorrowRecordDetails(recordId);
-            // Type assertion với xử lý safe
             const convertedDetails = details.map(detail => {
-                // Đảm bảo returnDate luôn là string
                 const returnDateString = detail.returnDate instanceof Date
                     ? detail.returnDate.toISOString().split('T')[0]
                     : detail.returnDate;
@@ -177,7 +176,6 @@ const BorrowRecordsPage: React.FC<BorrowRecordsPageProps> = () => {
             await cancelBorrowRecord(selectedRecordId);
             toast.success('Hủy phiếu mượn thành công');
 
-            // Update local state
             setBorrowRecords(prev =>
                 prev.map(record =>
                     record.id === selectedRecordId
@@ -253,7 +251,7 @@ const BorrowRecordsPage: React.FC<BorrowRecordsPageProps> = () => {
         const record = borrowRecords.find(r => r.id === recordId);
 
         return (
-            <Box>
+            <Box sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', mb: 2 }}>
                     📚 Chi tiết sách mượn
                 </Typography>
@@ -327,134 +325,160 @@ const BorrowRecordsPage: React.FC<BorrowRecordsPageProps> = () => {
                         </Button>
                     </Box>
                 ) : (
-                    <Grid container spacing={3}>
-                        {borrowRecords.map((record) => {
-                            const daysUntilDue = getDaysUntilDue(record.dueDate);
-                            const isExpanded = expandedRecord === record.id;
+                    <TableContainer component={Paper} elevation={1}>
+                        <Table sx={{ minWidth: 650 }}>
+                            <TableHead>
+                                <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Mã phiếu</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Trạng thái</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Ngày mượn</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Hạn trả</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Ngày trả</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Phí phạt</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Ghi chú</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Thao tác</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {borrowRecords.map((record) => {
+                                    const daysUntilDue = getDaysUntilDue(record.dueDate);
+                                    const isExpanded = expandedRecord === record.id;
 
-                            return (
-                                <Grid item xs={12} key={record.id}>
-                                    <Card
-                                        elevation={2}
-                                        sx={{
-                                            borderRadius: 2,
-                                            border: '1px solid',
-                                            borderColor: 'divider',
-                                            '&:hover': {
-                                                boxShadow: 4
-                                            }
-                                        }}
-                                    >
-                                        <CardContent>
-                                            {/* Record Header */}
-                                            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                                                <Box flex={1}>
-                                                    <Box display="flex" alignItems="center" mb={1}>
-                                                        <Typography variant="h6" fontWeight="medium" sx={{ mr: 2 }}>
-                                                            Phiếu mượn #{record.id}
-                                                        </Typography>
-                                                        <Chip
-                                                            icon={getStatusIcon(record.status)}
-                                                            label={record.status}
-                                                            color={getStatusColor(record.status)}
-                                                            variant="outlined"
-                                                            size="small"
-                                                        />
-                                                    </Box>
+                                    return (
+                                        <React.Fragment key={record.id}>
+                                            <TableRow
+                                                hover
+                                                sx={{
+                                                    '&:last-child td, &:last-child th': { border: 0 },
+                                                    backgroundColor: isExpanded ? 'action.hover' : 'inherit'
+                                                }}
+                                            >
+                                                <TableCell>
+                                                    <Typography variant="body2" fontWeight="medium">
+                                                        #{record.id}
+                                                    </Typography>
+                                                </TableCell>
 
-                                                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                                                        <Grid item xs={12} sm={6} md={3}>
-                                                            <Typography variant="body2" color="text.secondary">
-                                                                Ngày mượn
-                                                            </Typography>
-                                                            <Typography variant="body1">
-                                                                {BorrowRecordApi.formatDate(record.borrowDate)}
-                                                            </Typography>
-                                                        </Grid>
-                                                        <Grid item xs={12} sm={6} md={3}>
-                                                            <Typography variant="body2" color="text.secondary">
-                                                                Hạn trả
-                                                            </Typography>
-                                                            <Typography
-                                                                variant="body1"
-                                                                color={daysUntilDue < 0 ? 'error' : daysUntilDue <= 3 ? 'warning.main' : 'text.primary'}
-                                                            >
-                                                                {BorrowRecordApi.formatDate(record.dueDate)}
-                                                            </Typography>
-                                                        </Grid>
-                                                        {record.returnDate && (
-                                                            <Grid item xs={12} sm={6} md={3}>
-                                                                <Typography variant="body2" color="text.secondary">
-                                                                    Ngày trả
-                                                                </Typography>
-                                                                <Typography variant="body1">
-                                                                    {BorrowRecordApi.formatDate(record.returnDate)}
-                                                                </Typography>
-                                                            </Grid>
-                                                        )}
-                                                        {record.fineAmount && record.fineAmount > 0 && (
-                                                            <Grid item xs={12} sm={6} md={3}>
-                                                                <Typography variant="body2" color="text.secondary">
-                                                                    Phí phạt
-                                                                </Typography>
-                                                                <Typography variant="body1" color="error">
-                                                                    {record.fineAmount.toLocaleString()}₫
-                                                                </Typography>
-                                                            </Grid>
-                                                        )}
-                                                    </Grid>
+                                                <TableCell>
+                                                    <Chip
+                                                        icon={getStatusIcon(record.status)}
+                                                        label={record.status}
+                                                        color={getStatusColor(record.status)}
+                                                        variant="outlined"
+                                                        size="small"
+                                                    />
+                                                </TableCell>
 
-                                                    {/* Due date warning */}
-                                                    {record.status === BORROW_RECORD_STATUS.BORROWING && daysUntilDue <= 3 && daysUntilDue >= 0 && (
-                                                        <Alert severity="warning" sx={{ mb: 2 }}>
-                                                            Sách sắp hết hạn! Còn {daysUntilDue} ngày để trả sách.
-                                                        </Alert>
-                                                    )}
+                                                <TableCell>
+                                                    <Typography variant="body2">
+                                                        {BorrowRecordApi.formatDate(record.borrowDate)}
+                                                    </Typography>
+                                                </TableCell>
 
-                                                    {record.status === BORROW_RECORD_STATUS.BORROWING && daysUntilDue < 0 && (
-                                                        <Alert severity="error" sx={{ mb: 2 }}>
-                                                            Sách đã quá hạn {Math.abs(daysUntilDue)} ngày! Vui lòng trả sách sớm nhất có thể.
-                                                        </Alert>
-                                                    )}
-
-                                                    {record.notes && (
-                                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                                            Ghi chú: {record.notes}
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-
-                                                {/* Action Buttons */}
-                                                <Box display="flex" gap={1} ml={2}>
-                                                    {canCancelRecord(record.status) && (
-                                                        <IconButton
-                                                            color="error"
-                                                            onClick={() => openCancelDialog(record.id)}
-                                                            title="Hủy phiếu mượn"
-                                                        >
-                                                            <CancelIcon />
-                                                        </IconButton>
-                                                    )}
-                                                    <IconButton
-                                                        onClick={() => handleExpandRecord(record.id)}
-                                                        title="Xem chi tiết"
+                                                <TableCell>
+                                                    <Typography
+                                                        variant="body2"
+                                                        color={
+                                                            daysUntilDue < 0
+                                                                ? 'error'
+                                                                : daysUntilDue <= 3
+                                                                    ? 'warning.main'
+                                                                    : 'text.primary'
+                                                        }
+                                                        fontWeight={daysUntilDue <= 3 ? 'medium' : 'normal'}
                                                     >
-                                                        {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                                                    </IconButton>
-                                                </Box>
-                                            </Box>
+                                                        {BorrowRecordApi.formatDate(record.dueDate)}
+                                                        {record.status === BORROW_RECORD_STATUS.BORROWING && daysUntilDue <= 3 && (
+                                                            <Box component="span" sx={{ display: 'block', fontSize: '0.75rem' }}>
+                                                                {daysUntilDue < 0
+                                                                    ? `Quá hạn ${Math.abs(daysUntilDue)} ngày`
+                                                                    : `Còn ${daysUntilDue} ngày`
+                                                                }
+                                                            </Box>
+                                                        )}
+                                                    </Typography>
+                                                </TableCell>
 
-                                            {/* Expanded Details */}
-                                            <Collapse in={isExpanded}>
-                                                <Divider sx={{ mb: 2 }} />
-                                                {renderRecordDetails(record.id)}
-                                            </Collapse>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                            );
-                        })}
-                    </Grid>
+                                                <TableCell>
+                                                    <Typography variant="body2">
+                                                        {record.returnDate
+                                                            ? BorrowRecordApi.formatDate(record.returnDate)
+                                                            : '-'
+                                                        }
+                                                    </Typography>
+                                                </TableCell>
+
+                                                <TableCell>
+                                                    <Typography
+                                                        variant="body2"
+                                                        color={record.fineAmount && record.fineAmount > 0 ? 'error' : 'text.secondary'}
+                                                        fontWeight={record.fineAmount && record.fineAmount > 0 ? 'medium' : 'normal'}
+                                                    >
+                                                        {record.fineAmount && record.fineAmount > 0
+                                                            ? `${record.fineAmount.toLocaleString()}₫`
+                                                            : '-'
+                                                        }
+                                                    </Typography>
+                                                </TableCell>
+
+                                                <TableCell>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        {record.notes || '-'}
+                                                    </Typography>
+                                                </TableCell>
+
+                                                <TableCell align="center">
+                                                    <Box display="flex" justifyContent="center" gap={0.5}>
+                                                        {canCancelRecord(record.status) && (
+                                                            <IconButton
+                                                                color="error"
+                                                                size="small"
+                                                                onClick={() => openCancelDialog(record.id)}
+                                                                title="Hủy phiếu mượn"
+                                                            >
+                                                                <CancelIcon fontSize="small" />
+                                                            </IconButton>
+                                                        )}
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleExpandRecord(record.id)}
+                                                            title="Xem chi tiết"
+                                                        >
+                                                            {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                                                        </IconButton>
+                                                    </Box>
+                                                </TableCell>
+                                            </TableRow>
+
+                                            {/* Expanded Row for Details */}
+                                            <TableRow>
+                                                <TableCell colSpan={8} sx={{ p: 0, border: 0 }}>
+                                                    <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                                        <Box sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                                                            {/* Warning Messages */}
+                                                            {record.status === BORROW_RECORD_STATUS.BORROWING && daysUntilDue <= 3 && daysUntilDue >= 0 && (
+                                                                <Alert severity="warning" sx={{ m: 2, mb: 1 }}>
+                                                                    Sách sắp hết hạn! Còn {daysUntilDue} ngày để trả sách.
+                                                                </Alert>
+                                                            )}
+
+                                                            {record.status === BORROW_RECORD_STATUS.BORROWING && daysUntilDue < 0 && (
+                                                                <Alert severity="error" sx={{ m: 2, mb: 1 }}>
+                                                                    Sách đã quá hạn {Math.abs(daysUntilDue)} ngày! Vui lòng trả sách sớm nhất có thể.
+                                                                </Alert>
+                                                            )}
+
+                                                            {renderRecordDetails(record.id)}
+                                                        </Box>
+                                                    </Collapse>
+                                                </TableCell>
+                                            </TableRow>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
                 )}
             </Paper>
 

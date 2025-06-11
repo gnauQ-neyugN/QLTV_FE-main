@@ -473,6 +473,7 @@ export async function getUserBorrowRecords(): Promise<BorrowRecordModel[]> {
             returnDate: record.returnDate,
             notes: record.notes,
             status: record.status,
+            fineAmount: record.fineAmount,
             details: []
         })) || [];
     } catch (error) {
