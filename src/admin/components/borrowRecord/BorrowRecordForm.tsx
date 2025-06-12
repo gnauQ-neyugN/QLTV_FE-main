@@ -183,11 +183,7 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
             // Update state
             setDetails(updatedDetails);
-
-            // Notify if all books have been returned
-            if (isAllReturnedNow && !wasAllReturnedBefore) {
-                toast.info("Tất cả sách đã được trả. Bạn có thể cập nhật trạng thái phiếu mượn thành 'Đã trả'.");
-            }
+            
 
             handleCloseDetailDialog();
         } catch (error) {
@@ -284,13 +280,20 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
 
                             {updatedIsReturned && (
                                 <div className="mb-3">
-                                    <label className="form-label">Ngày trả</label>
-                                    <input
-                                        type="date"
+                                    <label className="form-label">Loại vi phạm</label>
+                                    <select
                                         className="form-control"
-                                        value={updatedReturnDate}
-                                        onChange={(e) => setUpdatedReturnDate(e.target.value)}
-                                    />
+                                        value={updatedViolationCode}
+                                        onChange={(e) => setUpdatedViolationCode(e.target.value)}
+                                    >
+                                        <option value="">Chọn loại vi phạm</option>
+                                        <option value="Không vi phạm">Không vi phạm</option>
+                                        {violationTypes.map((type) => (
+                                            <option key={type.code} value={type.code}>
+                                                {type.code} - {type.description}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             )}
 
@@ -561,26 +564,6 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                     </select>
                                 </div>
 
-                                {showViolationSelect && (
-                                    <div className="col-md-6 mb-3">
-                                        <label className="form-label">Loại vi phạm</label>
-                                        <select
-                                            className="form-control"
-                                            value={selectedViolationType}
-                                            onChange={(e) => handleViolationTypeChange(e as any)}
-                                            required
-                                        >
-                                            <option value="">Chọn loại vi phạm</option>
-                                            <option value="Không vi phạm">Không vi phạm</option>
-                                            {violationTypes.map((type) => (
-                                                <option key={type.code} value={type.code}>
-                                                    {type.code} - {type.description}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
                                 <div className="col-12">
                                     <label className="form-label">Ghi chú</label>
                                     <textarea
@@ -598,13 +581,6 @@ export const BorrowRecordForm: React.FC<BorrowRecordFormProps> = (props) => {
                                     <i className="fas fa-exclamation-triangle me-2"></i>
                                     Chưa thể cập nhật trạng thái thành "Đã trả" vì còn {stats.remainingBooks} sách chưa được trả.
                                     Vui lòng cập nhật trạng thái từng sách trước.
-                                </div>
-                            )}
-
-                            {newStatus === BORROW_RECORD_STATUS.RETURNED && stats.allReturned && (
-                                <div className="alert alert-success mt-3">
-                                    <i className="fas fa-check-circle me-2"></i>
-                                    Tất cả sách đã được trả. Có thể cập nhật trạng thái phiếu mượn thành "Đã trả".
                                 </div>
                             )}
                         </div>

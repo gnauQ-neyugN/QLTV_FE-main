@@ -111,8 +111,8 @@ const LoginPage: React.FC<LoginPageProps> = (props) => {
 				}
 
 				// Kiểm tra role để chuyển về link
-				if (decodedToken.role === "ADMIN") {
-					navigation("/admin/dashboard");
+				if (decodedToken.role === "ADMIN" || decodedToken.role === "STAFF") {
+					navigation("/admin");
 				} else {
 					navigation("/");
 				}
