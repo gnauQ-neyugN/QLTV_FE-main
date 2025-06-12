@@ -283,7 +283,7 @@ class BorrowRecordApi {
                     let bookItem = {
                         idBookItem: 0,
                         barcode: "Unknown",
-                        status: "Unknown",
+                        returned: "Unknown",
                         location: "Unknown",
                         condition: 0,
                         book: {
@@ -304,7 +304,7 @@ class BorrowRecordApi {
                         bookItem = {
                             idBookItem: bookItemData.idBookItem,
                             barcode: bookItemData.barcode,
-                            status: bookItemData.status,
+                            returned: bookItemData.returned,
                             location: bookItemData.location,
                             condition: bookItemData.condition,
                             book: {
