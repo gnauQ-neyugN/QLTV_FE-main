@@ -272,6 +272,9 @@ class BorrowRecordApi {
     /**
      * Fetch borrow record details for a specific borrow record
      */
+    /**
+     * Fetch borrow record details for a specific borrow record
+     */
     public async fetchBorrowRecordDetails(id: number): Promise<BorrowRecordDetail[]> {
         try {
             const detailsData = await request(`${endpointBE}/borrow-records/${id}/borrowRecordDetails`);
@@ -283,7 +286,7 @@ class BorrowRecordApi {
                     let bookItem = {
                         idBookItem: 0,
                         barcode: "Unknown",
-                        returned: "Unknown",
+                        status: "Unknown", // Changed from 'returned' to 'status'
                         location: "Unknown",
                         condition: 0,
                         book: {
@@ -304,7 +307,7 @@ class BorrowRecordApi {
                         bookItem = {
                             idBookItem: bookItemData.idBookItem,
                             barcode: bookItemData.barcode,
-                            returned: bookItemData.returned,
+                            status: bookItemData.status, // Use correct property name
                             location: bookItemData.location,
                             condition: bookItemData.condition,
                             book: {
@@ -313,9 +316,13 @@ class BorrowRecordApi {
                                 author: bookData.author
                             }
                         };
+                    } catch (error) {
+                        console.error("Error fetching book item info:", error);
+                    }
 
-                        // Get violation type if exists
-                        if (detail._links?.violationType) {
+                    // Get violation type if exists - with proper error handling
+                    try {
+                        if (detail._links?.violationType?.href) {
                             const violationData = await request(detail._links.violationType.href);
                             violationType = {
                                 idLibraryViolationType: violationData.idLibraryViolationType,
@@ -324,14 +331,16 @@ class BorrowRecordApi {
                                 fine: violationData.fine
                             };
                         }
-                    } catch (error) {
-                        console.error("Error fetching book item info:", error);
+                    } catch (violationError) {
+                        // Log the error but don't throw - violation type is optional
+                        console.warn(`Could not fetch violation type for detail ${detail.id}:`, violationError);
+                        // violationType remains undefined
                     }
 
                     return {
                         id: detail.id,
                         quantity: detail.quantity,
-                        isReturned: detail.isReturned || detail.returned,
+                        isReturned: detail.isReturned || detail.returned || false,
                         returnDate: detail.returnDate,
                         notes: detail.notes,
                         bookItem,
@@ -346,6 +355,7 @@ class BorrowRecordApi {
             throw error;
         }
     }
+
 
     /**
      * Update borrow record status, notes, and violation code

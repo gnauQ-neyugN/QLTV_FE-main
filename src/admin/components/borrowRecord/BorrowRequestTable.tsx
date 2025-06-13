@@ -2,6 +2,7 @@ import { VisibilityOutlined } from "@mui/icons-material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import CloseIcon from "@mui/icons-material/Close";
 import {
     Box,
     Chip,
@@ -10,17 +11,18 @@ import {
     Tooltip,
     Typography,
     Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from "@mui/material";
 import { GridColDef } from "@mui/x-data-grid";
 import React, { useEffect, useState } from "react";
 import { DataTable } from "../../../layouts/utils/DataTable";
-import BorrowRecordApi, { BorrowRecord, BORROW_RECORD_STATUS } from "../../../api/BorrowRecordApi";
+import BorrowRecordApi, { BorrowRecord, BorrowRecordDetail, BORROW_RECORD_STATUS } from "../../../api/BorrowRecordApi";
 import { toast } from "react-toastify";
 
 interface BorrowRequestTableProps {
-    setId: any;
-    setOption: any;
-    handleOpenModal: any;
     setKeyCountReload?: any;
     keyCountReload?: any;
 }
@@ -29,6 +31,12 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<BorrowRecord[]>([]);
     const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
+
+    // State for detail modal
+    const [detailModal, setDetailModal] = useState(false);
+    const [selectedRecord, setSelectedRecord] = useState<BorrowRecord | null>(null);
+    const [selectedDetails, setSelectedDetails] = useState<BorrowRecordDetail[]>([]);
+    const [loadingDetails, setLoadingDetails] = useState(false);
 
     // Fetch data from API
     useEffect(() => {
@@ -119,6 +127,30 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
         }
     };
 
+    const handleViewRecord = async (recordId: number) => {
+        try {
+            setLoadingDetails(true);
+            const record = data.find(r => r.id === recordId);
+            if (record) {
+                setSelectedRecord(record);
+                const details = await BorrowRecordApi.fetchBorrowRecordDetails(recordId);
+                setSelectedDetails(details);
+                setDetailModal(true);
+            }
+        } catch (error) {
+            console.error("Error fetching record details:", error);
+            toast.error("Lỗi khi tải chi tiết phiếu mượn");
+        } finally {
+            setLoadingDetails(false);
+        }
+    };
+
+    const handleCloseDetailModal = () => {
+        setDetailModal(false);
+        setSelectedRecord(null);
+        setSelectedDetails([]);
+    };
+
     const columns: GridColDef[] = [
         { field: "id", headerName: "ID", width: 70 },
         { field: "cardNumber", headerName: "MÃ THẺ", width: 120 },
@@ -177,27 +209,9 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
                             <IconButton
                                 size="small"
                                 color="secondary"
-                                onClick={() => {
-                                    props.setOption("view");
-                                    props.setId(item.id);
-                                    props.handleOpenModal();
-                                }}
+                                onClick={() => handleViewRecord(item.id as number)}
                             >
                                 <VisibilityOutlined fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
-
-                        <Tooltip title={"Chỉnh sửa"}>
-                            <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => {
-                                    props.setOption("update");
-                                    props.setId(item.id);
-                                    props.handleOpenModal();
-                                }}
-                            >
-                                <EditOutlinedIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
 
@@ -258,19 +272,6 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
                         Các phiếu mượn đang chờ xử lý và phê duyệt
                     </Typography>
                 </div>
-
-                {data.length > 0 && (
-                    <div className="d-flex gap-2">
-                        <Button
-                            variant="outlined"
-                            color="success"
-                            size="small"
-                            startIcon={<CheckCircleOutlineIcon />}
-                        >
-                            Phê duyệt tất cả
-                        </Button>
-                    </div>
-                )}
             </Box>
 
             {data.length === 0 ? (
@@ -294,6 +295,150 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
             ) : (
                 <DataTable columns={columns} rows={data} />
             )}
+
+            {/* Detail Modal */}
+            <Dialog
+                open={detailModal}
+                onClose={handleCloseDetailModal}
+                maxWidth="lg"
+                fullWidth
+            >
+                <DialogTitle>
+                    <div className="d-flex justify-content-between align-items-center">
+                        <Typography variant="h6">
+                            Chi tiết phiếu đặt mượn #{selectedRecord?.id}
+                        </Typography>
+                        <IconButton onClick={handleCloseDetailModal}>
+                            <CloseIcon />
+                        </IconButton>
+                    </div>
+                </DialogTitle>
+                <DialogContent>
+                    {loadingDetails ? (
+                        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : selectedRecord ? (
+                        <div>
+                            {/* Thông tin cơ bản */}
+                            <div className="mb-4">
+                                <h5 className="mb-2">Thông tin phiếu mượn</h5>
+                                <div className="card p-3">
+                                    <div className="row">
+                                        <div className="col-md-4 mb-2">
+                                            <small className="text-muted">Mã phiếu</small>
+                                            <div className="fw-bold">{selectedRecord.id}</div>
+                                        </div>
+                                        <div className="col-md-4 mb-2">
+                                            <small className="text-muted">Mã thẻ thư viện</small>
+                                            <div className="fw-bold">{selectedRecord.cardNumber}</div>
+                                        </div>
+                                        <div className="col-md-4 mb-2">
+                                            <small className="text-muted">Tên người mượn</small>
+                                            <div className="fw-bold">{selectedRecord.userName}</div>
+                                        </div>
+                                        <div className="col-md-4 mb-2">
+                                            <small className="text-muted">Ngày tạo</small>
+                                            <div className="fw-bold">{BorrowRecordApi.formatDate(selectedRecord.borrowDate)}</div>
+                                        </div>
+                                        <div className="col-md-4 mb-2">
+                                            <small className="text-muted">Ngày hẹn trả</small>
+                                            <div className="fw-bold">{BorrowRecordApi.formatDate(selectedRecord.dueDate)}</div>
+                                        </div>
+                                        <div className="col-md-4 mb-2">
+                                            <small className="text-muted">Trạng thái</small>
+                                            <div>
+                                                <Chip
+                                                    label={selectedRecord.status}
+                                                    color="info"
+                                                    variant="outlined"
+                                                    size="small"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="col-md-12 mb-2">
+                                            <small className="text-muted">Ghi chú</small>
+                                            <div>{selectedRecord.notes || "—"}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Danh sách sách */}
+                            <div className="mb-4">
+                                <h5 className="mb-2">Danh sách sách mượn ({selectedDetails.length} quyển)</h5>
+                                <div className="card">
+                                    <div className="table-responsive">
+                                        <table className="table table-striped mb-0">
+                                            <thead style={{ backgroundColor: "#f5f5f5" }}>
+                                            <tr>
+                                                <th>STT</th>
+                                                <th>Tên sách</th>
+                                                <th>Mã vạch</th>
+                                                <th>Vị trí</th>
+                                                <th>Tình trạng</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {selectedDetails.map((detail, index) => (
+                                                <tr key={detail.id}>
+                                                    <td>{index + 1}</td>
+                                                    <td>
+                                                        <div>
+                                                            <div className="fw-bold">{detail.bookItem.book.nameBook}</div>
+                                                            <small className="text-muted">{detail.bookItem.book.author}</small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span className="badge bg-outline-secondary">{detail.bookItem.barcode}</span>
+                                                    </td>
+                                                    <td>{detail.bookItem.location}</td>
+                                                    <td>
+                                                            <span className={`badge ${
+                                                                detail.bookItem.condition >= 80 ? "bg-success" :
+                                                                    detail.bookItem.condition >= 60 ? "bg-warning text-dark" : "bg-danger"
+                                                            }`}>
+                                                                {detail.bookItem.condition}%
+                                                            </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseDetailModal} color="secondary">
+                        Đóng
+                    </Button>
+                    {selectedRecord && (
+                        <>
+                            <Button
+                                onClick={() => handleApprove(selectedRecord.id)}
+                                color="success"
+                                variant="contained"
+                                disabled={processingIds.has(selectedRecord.id)}
+                                startIcon={<CheckCircleOutlineIcon />}
+                            >
+                                Phê duyệt
+                            </Button>
+                            <Button
+                                onClick={() => handleReject(selectedRecord.id)}
+                                color="error"
+                                variant="outlined"
+                                disabled={processingIds.has(selectedRecord.id)}
+                                startIcon={<CancelOutlinedIcon />}
+                            >
+                                Từ chối
+                            </Button>
+                        </>
+                    )}
+                </DialogActions>
+            </Dialog>
         </div>
     );
 };

@@ -3,7 +3,6 @@ import { Tab, Tabs, Box, Typography, Button } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { BorrowRecordTable } from "./components/borrowRecord/BorrowRecordTable";
 import { FadeModal } from "../layouts/utils/FadeModal";
-import { BorrowRecordForm } from "./components/borrowRecord/BorrowRecordForm";
 import BorrowRecordCreate from "./components/borrowRecord/BorrowRecordCreate";
 import BorrowRecordSearch from "./components/borrowRecord/BorrowRecordSearch";
 import BorrowRequestTable from "./components/borrowRecord/BorrowRequestTable";
@@ -48,13 +47,6 @@ const BorrowRecordManagement = () => {
 
     // State for reloading data after updates
     const [keyCountReload, setKeyCountReload] = useState(0);
-    const [id, setId] = useState(0);
-
-    // State for modal control and operation type
-    const [option, setOption] = useState("");
-    const [openModal, setOpenModal] = React.useState(false);
-    const handleOpenModal = () => setOpenModal(true);
-    const handleCloseModal = () => setOpenModal(false);
 
     // State for create modal
     const [openCreateModal, setOpenCreateModal] = React.useState(false);
@@ -140,10 +132,7 @@ const BorrowRecordManagement = () => {
                         </div>
                         <BorrowRequestTable
                             keyCountReload={keyCountReload}
-                            setOption={setOption}
-                            handleOpenModal={handleOpenModal}
                             setKeyCountReload={setKeyCountReload}
-                            setId={setId}
                         />
                     </TabPanel>
 
@@ -161,10 +150,7 @@ const BorrowRecordManagement = () => {
                         <BorrowRecordSearch
                             searchType="borrow"
                             keyCountReload={keyCountReload}
-                            setOption={setOption}
-                            handleOpenModal={handleOpenModal}
                             setKeyCountReload={setKeyCountReload}
-                            setId={setId}
                         />
                     </TabPanel>
 
@@ -182,10 +168,7 @@ const BorrowRecordManagement = () => {
                         <BorrowRecordSearch
                             searchType="return"
                             keyCountReload={keyCountReload}
-                            setOption={setOption}
-                            handleOpenModal={handleOpenModal}
                             setKeyCountReload={setKeyCountReload}
-                            setId={setId}
                         />
                     </TabPanel>
 
@@ -202,28 +185,11 @@ const BorrowRecordManagement = () => {
                         </div>
                         <BorrowRecordTable
                             keyCountReload={keyCountReload}
-                            setOption={setOption}
-                            handleOpenModal={handleOpenModal}
                             setKeyCountReload={setKeyCountReload}
-                            setId={setId}
                         />
                     </TabPanel>
                 </Box>
             </div>
-
-            {/* Modal for editing borrow records */}
-            <FadeModal
-                open={openModal}
-                handleOpen={handleOpenModal}
-                handleClose={handleCloseModal}
-            >
-                <BorrowRecordForm
-                    id={id}
-                    option={option}
-                    setKeyCountReload={setKeyCountReload}
-                    handleCloseModal={handleCloseModal}
-                />
-            </FadeModal>
 
             {/* Modal for creating new borrow records */}
             <FadeModal
