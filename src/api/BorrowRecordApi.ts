@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 
 // Types for API responses
 export type BorrowRecord = {
+    recordId: String;
     id: number;
     borrowDate: string;
     dueDate: string;
@@ -216,6 +217,7 @@ class BorrowRecordApi {
                         notes: record.notes,
                         status: record.status,
                         fineAmount: record.fineAmount || 0,
+                        recordId: record.recordId,
                         cardNumber,
                         userName,
                     };
@@ -259,6 +261,7 @@ class BorrowRecordApi {
                 notes: borrowRecordData.notes,
                 status: borrowRecordData.status,
                 fineAmount: borrowRecordData.fineAmount || 0,
+                recordId: borrowRecordData.recordId,
                 cardNumber,
                 userName,
                 libraryCardId,
@@ -427,6 +430,51 @@ class BorrowRecordApi {
             allReturned: totalBooks === returnedBooks
         };
     }
+    /**
+     * Fetch a specific borrow record by recordId
+     */
+    public async fetchBorrowRecordByRecordId(recordId: string): Promise<BorrowRecord> {
+        try {
+            // Tìm kiếm borrow record theo recordId
+            const searchResponse = await request(`${endpointBE}/borrow-records/search/findByRecordId?recordId=${recordId}`);
+
+            if (!searchResponse) {
+                throw new Error("Không tìm thấy phiếu mượn với mã này");
+            }
+
+            // Get library card info
+            let cardNumber = "Unknown";
+            let userName = "Unknown";
+            let libraryCardId = 0;
+
+            try {
+                const libraryCardData = await request(searchResponse._links.libraryCard.href);
+                cardNumber = libraryCardData.cardNumber || "";
+                libraryCardId = libraryCardData.idLibraryCard || 0;
+                const userData = libraryCardData._embedded.user;
+                userName = userData.username;
+            } catch (error) {
+                console.error("Error fetching related info:", error);
+            }
+
+            return {
+                id: searchResponse.id,
+                borrowDate: searchResponse.borrowDate,
+                dueDate: searchResponse.dueDate,
+                returnDate: searchResponse.returnDate,
+                notes: searchResponse.notes,
+                status: searchResponse.status,
+                fineAmount: searchResponse.fineAmount || 0,
+                recordId: searchResponse.recordId,
+                cardNumber,
+                userName,
+                libraryCardId,
+            };
+        } catch (error) {
+            console.error("Error in fetchBorrowRecordByRecordId:", error);
+            throw error;
+        }
+    }
 }
 
 export default new BorrowRecordApi();
@@ -474,7 +522,10 @@ export async function getUserBorrowRecords(): Promise<BorrowRecordModel[]> {
         }
 
         const cardNumber = userResponse.cardNumber;
-        const response = await request(`${endpointBE}/borrow-records/search/findBorrowRecordsByLibraryCard_CardNumber?cardNumber=${cardNumber}`);
+        const response = await request(
+            `${endpointBE}/borrow-records/search/findBorrowRecordsByLibraryCard_CardNumber?cardNumber=${cardNumber}&sort=id,desc`
+        );
+
 
         return response._embedded?.borrowRecords.map((record: any) => ({
             id: record.id,
@@ -484,6 +535,7 @@ export async function getUserBorrowRecords(): Promise<BorrowRecordModel[]> {
             notes: record.notes,
             status: record.status,
             fineAmount: record.fineAmount,
+            recordId: record.recordId,
             details: []
         })) || [];
     } catch (error) {
@@ -562,3 +614,4 @@ export async function cancelBorrowRecord(borrowRecordId: any): Promise<any> {
         throw error;
     }
 }
+

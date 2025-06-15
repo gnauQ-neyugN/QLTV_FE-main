@@ -154,7 +154,7 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
     const columns: GridColDef[] = [
         { field: "id", headerName: "ID", width: 70 },
         { field: "cardNumber", headerName: "MÃ THẺ", width: 120 },
-        { field: "userName", headerName: "TÊN NGƯỜI MƯỢN", width: 150 },
+        { field: "recordId", headerName: "MÃ ĐẶT MƯỢN", width: 150 },
         {
             field: "borrowDate",
             headerName: "NGÀY TẠO",
@@ -334,8 +334,8 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
                                             <div className="fw-bold">{selectedRecord.cardNumber}</div>
                                         </div>
                                         <div className="col-md-4 mb-2">
-                                            <small className="text-muted">Tên người mượn</small>
-                                            <div className="fw-bold">{selectedRecord.userName}</div>
+                                            <small className="text-muted">Mã đặt mượn</small>
+                                            <div className="fw-bold">{selectedRecord.recordId}</div>
                                         </div>
                                         <div className="col-md-4 mb-2">
                                             <small className="text-muted">Ngày tạo</small>

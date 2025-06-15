@@ -331,6 +331,7 @@ const BorrowRecordsPage: React.FC<BorrowRecordsPageProps> = () => {
                                 <TableRow sx={{ backgroundColor: 'grey.50' }}>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Mã phiếu</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Trạng thái</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Mã đặt mượn</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Ngày mượn</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Hạn trả</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Ngày trả</TableCell>
@@ -368,7 +369,11 @@ const BorrowRecordsPage: React.FC<BorrowRecordsPageProps> = () => {
                                                         size="small"
                                                     />
                                                 </TableCell>
-
+                                                <TableCell>
+                                                    <Typography variant="body2">
+                                                        {record.recordId}
+                                                    </Typography>
+                                                </TableCell>
                                                 <TableCell>
                                                     <Typography variant="body2">
                                                         {BorrowRecordApi.formatDate(record.borrowDate)}
