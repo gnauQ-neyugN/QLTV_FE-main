@@ -475,6 +475,70 @@ class BorrowRecordApi {
             throw error;
         }
     }
+
+    // Add these new methods to the BorrowRecordApi class
+
+    /**
+     * Fetch borrow record by BookItem barcode
+     */
+    public async fetchBorrowRecordByBarcode(barcode: string): Promise<BorrowRecord> {
+        try {
+            // First find the BookItem by barcode
+            const bookItemResponse = await request(`${endpointBE}/book-items/search/findByBarcode?barcode=${barcode}`);
+
+            if (!bookItemResponse) {
+                throw new Error("Không tìm thấy sách với mã vạch này");
+            }
+
+            // Then find the BorrowRecordDetail that contains this BookItem and is currently borrowed
+            const borrowRecordDetailResponse = await request(
+                `${endpointBE}/borrow-record-detail/search/findByBookItem_BarcodeAndIsReturnedFalse?barcode=${barcode}`
+            );
+
+            if (!borrowRecordDetailResponse) {
+                throw new Error("Không tìm thấy phiếu mượn đang hoạt động cho sách này");
+            }
+
+            // Get the BorrowRecord from the detail
+            const borrowRecordResponse = await request(borrowRecordDetailResponse._links.borrowRecord.href);
+
+            if (!borrowRecordResponse) {
+                throw new Error("Không tìm thấy phiếu mượn");
+            }
+
+            // Get library card info
+            let cardNumber = "Unknown";
+            let userName = "Unknown";
+            let libraryCardId = 0;
+
+            try {
+                const libraryCardData = await request(borrowRecordResponse._links.libraryCard.href);
+                cardNumber = libraryCardData.cardNumber || "";
+                libraryCardId = libraryCardData.idLibraryCard || 0;
+                const userData = libraryCardData._embedded.user;
+                userName = userData.username;
+            } catch (error) {
+                console.error("Error fetching related info:", error);
+            }
+
+            return {
+                id: borrowRecordResponse.id,
+                borrowDate: borrowRecordResponse.borrowDate,
+                dueDate: borrowRecordResponse.dueDate,
+                returnDate: borrowRecordResponse.returnDate,
+                notes: borrowRecordResponse.notes,
+                status: borrowRecordResponse.status,
+                fineAmount: borrowRecordResponse.fineAmount || 0,
+                recordId: borrowRecordResponse.recordId,
+                cardNumber,
+                userName,
+                libraryCardId,
+            };
+        } catch (error) {
+            console.error("Error in fetchBorrowRecordByBarcode:", error);
+            throw error;
+        }
+    }
 }
 
 export default new BorrowRecordApi();

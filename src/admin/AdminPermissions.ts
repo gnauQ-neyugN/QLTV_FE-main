@@ -21,6 +21,12 @@ export const PERMISSIONS: Permission[] = [
         staffAccess: true // Staff được phép quản lý sách
     },
     {
+        module: "book-item",
+        description: "Quản lý BookItem",
+        adminAccess: true,
+        staffAccess: true // Staff được phép quản lý BookItem
+    },
+    {
         module: "genre",
         description: "Quản lý thể loại",
         adminAccess: true,

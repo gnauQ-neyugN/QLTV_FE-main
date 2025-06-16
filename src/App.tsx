@@ -38,7 +38,9 @@ import BorrowRecordManagementPage from "./admin/BorrowRecordManagement";
 // Import new library card management components
 import LibraryCardManagementPage from "./admin/LibraryCardManagement";
 import LibraryViolationTypeManagementPage from "./admin/LibraryCardViolationTypeManagement";
-import RoleManagement from "./admin/RoleManagement"
+import RoleManagement from "./admin/RoleManagement";
+// Import BookItem Management
+import BookItemManagementPage from "./admin/BookItemManagement";
 
 const MyRoutes = () => {
 	const [reloadAvatar, setReloadAvatar] = useState(0);
@@ -117,6 +119,10 @@ const MyRoutes = () => {
 										<Route
 											path='/admin/book'
 											element={<BookManagementPage />}
+										/>
+										<Route
+											path='/admin/book-item'
+											element={<BookItemManagementPage />}
 										/>
 										<Route
 											path='/admin/user'

@@ -115,9 +115,14 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
         }
     }, [details]);
 
+    // Update the handleSearch method in BorrowRecordSearch component
+
     const handleSearch = async () => {
         if (!searchValue.trim()) {
-            toast.warning("Vui lòng nhập mã phiếu mượn");
+            const warningMessage = props.searchType === "borrow"
+                ? "Vui lòng nhập mã phiếu mượn"
+                : "Vui lòng nhập mã phiếu mượn hoặc mã vạch sách";
+            toast.warning(warningMessage);
             return;
         }
 
@@ -127,9 +132,27 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
         setDetails([]);
 
         try {
-            const recordId = searchValue.trim();
+            const searchInput = searchValue.trim();
+            let recordData: BorrowRecord;
 
-            const recordData = await BorrowRecordApi.fetchBorrowRecordByRecordId(recordId);
+            if (props.searchType === "return") {
+                // For return type, try both recordId and barcode search
+                try {
+                    // First try to search by recordId
+                    recordData = await BorrowRecordApi.fetchBorrowRecordByRecordId(searchInput);
+                } catch (recordIdError) {
+                    try {
+                        // If recordId search fails, try barcode search
+                        recordData = await BorrowRecordApi.fetchBorrowRecordByBarcode(searchInput);
+                    } catch (barcodeError) {
+                        throw new Error("Không tìm thấy phiếu mượn với mã phiếu mượn hoặc mã vạch này");
+                    }
+                }
+            } else {
+                // For borrow type, only search by recordId
+                recordData = await BorrowRecordApi.fetchBorrowRecordByRecordId(searchInput);
+            }
+
             const detailsData = await BorrowRecordApi.fetchBorrowRecordDetails(recordData.id);
 
             if (props.searchType === "borrow") {
@@ -152,7 +175,10 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
         } catch (error: any) {
             console.error("Error searching borrow record:", error);
             if (error.message.includes("Failed to fetch") || error.message.includes("Không tìm thấy")) {
-                toast.error("Không tìm thấy phiếu mượn với mã này");
+                const errorMessage = props.searchType === "return"
+                    ? "Không tìm thấy phiếu mượn với mã phiếu mượn hoặc mã vạch này"
+                    : "Không tìm thấy phiếu mượn với mã này";
+                toast.error(errorMessage);
                 setNotFound(true);
             } else {
                 toast.error(error.message || "Lỗi khi tìm kiếm phiếu mượn");
@@ -409,24 +435,29 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
 
     return (
         <div>
+
             {/* Search Section */}
             <Card sx={{ mb: 3 }}>
                 <CardContent>
                     <Typography variant="h6" gutterBottom>
                         <SearchIcon sx={{ mr: 1, verticalAlign: "middle" }} />
-                        Tìm kiếm phiếu mượn
+                        {props.searchType === "borrow" ? "Tìm kiếm phiếu mượn" : "Tìm kiếm phiếu mượn / sách"}
                     </Typography>
 
                     <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
                         <TextField
                             fullWidth
-                            label="Nhập mã phiếu mượn"
+                            label={props.searchType === "borrow"
+                                ? "Nhập mã phiếu mượn"
+                                : "Nhập mã phiếu mượn hoặc mã vạch sách"}
                             variant="outlined"
                             value={searchValue}
                             onChange={(e) => setSearchValue(e.target.value)}
                             onKeyPress={handleKeyPress}
                             disabled={loading}
-                            placeholder="Ví dụ: BR-20250613-0001, BR-20250613-0002..."
+                            placeholder={props.searchType === "borrow"
+                                ? "Ví dụ: BR-20250613-0001, BR-20250613-0002..."
+                                : "Ví dụ: BR-20250613-0001 hoặc BC001234567..."}
                         />
                         <Button
                             variant="contained"
@@ -439,23 +470,6 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
                             {loading ? "Đang tìm..." : "Tìm kiếm"}
                         </Button>
                     </Box>
-
-                    {props.searchType === "borrow" && (
-                        <Alert severity="info" sx={{ mt: 2 }}>
-                            <Typography variant="body2">
-                                <strong>Lưu ý:</strong> Chỉ hiển thị các phiếu mượn đã được phê duyệt và sẵn sàng cho mượn.
-                            </Typography>
-                        </Alert>
-                    )}
-
-                    {props.searchType === "return" && (
-                        <Alert severity="info" sx={{ mt: 2 }}>
-                            <Typography variant="body2">
-                                <strong>Lưu ý:</strong> Chỉ hiển thị các phiếu mượn đang trong trạng thái mượn sách.
-                                Chọn loại vi phạm và bấm "Trả sách" để xử lý từng cuốn.
-                            </Typography>
-                        </Alert>
-                    )}
                 </CardContent>
             </Card>
 

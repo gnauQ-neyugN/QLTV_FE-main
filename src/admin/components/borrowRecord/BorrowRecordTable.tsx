@@ -106,7 +106,6 @@ export const BorrowRecordTable: React.FC<BorrowRecordTableProps> = (props) => {
     const columns: GridColDef[] = [
         { field: "id", headerName: "ID", width: 70 },
         { field: "cardNumber", headerName: "MÃ THẺ", width: 120 },
-        { field: "userName", headerName: "TÊN NGƯỜI MƯỢN", width: 150 },
         {
             field: "borrowDate",
             headerName: "NGÀY MƯỢN",
@@ -246,10 +245,6 @@ export const BorrowRecordTable: React.FC<BorrowRecordTableProps> = (props) => {
                                             <div className="fw-bold">{selectedRecord.cardNumber}</div>
                                         </div>
                                         <div className="col-md-4 mb-2">
-                                            <small className="text-muted">Tên người mượn</small>
-                                            <div className="fw-bold">{selectedRecord.userName}</div>
-                                        </div>
-                                        <div className="col-md-4 mb-2">
                                             <small className="text-muted">Ngày mượn</small>
                                             <div className="fw-bold">{BorrowRecordApi.formatDate(selectedRecord.borrowDate)}</div>
                                         </div>
@@ -355,7 +350,7 @@ export const BorrowRecordTable: React.FC<BorrowRecordTableProps> = (props) => {
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        <span className="badge bg-outline-secondary">{detail.bookItem.barcode}</span>
+                                                        <span className="fw-bold">{detail.bookItem.barcode}</span>
                                                     </td>
                                                     <td>{detail.bookItem.location}</td>
                                                     <td>

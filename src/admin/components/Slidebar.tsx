@@ -2,6 +2,7 @@ import React, {useEffect, useState } from "react";
 import PersonIcon from "@mui/icons-material/Person";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import SecurityIcon from "@mui/icons-material/Security";
@@ -27,8 +28,8 @@ interface JwtPayload {
 }
 
 export const Slidebar: React.FC<SlidebarProps> = (props) => {
-	const { setCartList } = useCartItem();
-	const { setLoggedIn } = useAuth();
+	const {setCartList} = useCartItem();
+	const {setLoggedIn} = useAuth();
 	const navigate = useNavigate();
 	const [userRole, setUserRole] = useState<string>("");
 
@@ -45,32 +46,10 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 		}
 	}, []);
 
-	// Kiểm tra quyền truy cập menu
-	const hasAccess = (menuItem: string): boolean => {
-		if (userRole === "ADMIN") {
-			return true; // Admin có quyền truy cập tất cả
-		}
-
-		if (userRole === "STAFF") {
-			// Staff chỉ có quyền truy cập các menu được chỉ định
-			const staffAllowedMenus = [
-				"book", // Quản lý sách
-				"genre", // Quản lý thể loại
-				"user", // Quản lý tài khoản
-				"order", // Quản lý đơn hàng
-				"borrow", // Quản lý mượn trả
-				"library-card" // Quản lý thẻ thư viện
-			];
-			return staffAllowedMenus.includes(menuItem);
-		}
-
-		return false;
-	};
-
 	return (
 		<div
 			className="position-fixed overflow-auto bg-primary min-vh-100"
-			style={{ zIndex: "100", width: "250px", maxHeight: "100vh" }}
+			style={{zIndex: "100", width: "250px", maxHeight: "100vh"}}
 		>
 			<div className='d-flex flex-column justify-content-between min-vh-100'>
 				<div className='px-3'>
@@ -82,7 +61,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 							QLibrary
 						</h1>
 					</a>
-					<hr className='text-white d-none d-sm-block d-md-block' />
+					<hr className='text-white d-none d-sm-block d-md-block'/>
 					<ul className='nav nav-pills flex-column' id='parentM'>
 						{/* Dashboard - Sử dụng permission system */}
 						{hasPermission(userRole, "dashboard") && (
@@ -91,7 +70,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 									to={"/admin/dashboard"}
 									className={`nav-link d-flex align-items-center justify-content-center`}
 								>
-									<DashboardIcon fontSize='small' />
+									<DashboardIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 										Dashboard
 									</span>
@@ -106,9 +85,24 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 									to={"/admin/book"}
 									className={`nav-link d-flex align-items-center justify-content-center`}
 								>
-									<MenuBookRoundedIcon fontSize='small' />
+									<MenuBookRoundedIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 										Quản lý Sách
+									</span>
+								</NavLink>
+							</li>
+						)}
+
+						{/* Quản lý BookItem - Sử dụng permission system */}
+						{hasPermission(userRole, "book-item") && (
+							<li className='nav-item'>
+								<NavLink
+									to={"/admin/book-item"}
+									className={`nav-link d-flex align-items-center justify-content-center`}
+								>
+									<LibraryBooksIcon fontSize='small'/>
+									<span className='ms-2 d-none d-sm-inline d-md-inline'>
+										Quản lý BookItem
 									</span>
 								</NavLink>
 							</li>
@@ -121,7 +115,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 									to={"/admin/genre"}
 									className={`nav-link d-flex align-items-center justify-content-center`}
 								>
-									<CategoryRoundedIcon fontSize='small' />
+									<CategoryRoundedIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 										Quản lý thể loại
 									</span>
@@ -136,7 +130,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 									to={"/admin/user"}
 									className={`nav-link d-flex align-items-center justify-content-center`}
 								>
-									<ManageAccountsIcon fontSize='small' />
+									<ManageAccountsIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 										Quản lý tài khoản
 									</span>
@@ -144,14 +138,14 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 							</li>
 						)}
 
-						{/* Quản lý phaan quyeenf - Sử dụng permission system */}
+						{/* Quản lý phân quyền - Sử dụng permission system */}
 						{hasPermission(userRole, "role-management") && (
 							<li className='nav-item '>
 								<NavLink
 									to={"/admin/role-management"}
 									className={`nav-link d-flex align-items-center justify-content-center`}
 								>
-									<SecurityIcon fontSize='small' />
+									<SecurityIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 									Quản lý phân quyền
 								</span>
@@ -166,7 +160,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 									to={"/admin/order"}
 									className={`nav-link d-flex align-items-center justify-content-center `}
 								>
-									<LocalMallRoundedIcon fontSize='small' />
+									<LocalMallRoundedIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 										Quản lý đơn hàng
 									</span>
@@ -181,7 +175,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 									to={"/admin/borrow"}
 									className={`nav-link d-flex align-items-center justify-content-center `}
 								>
-									<LocalMallRoundedIcon fontSize='small' />
+									<LocalMallRoundedIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 										Quản lý mượn trả
 									</span>
@@ -196,7 +190,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 									to={"/admin/library-card"}
 									className={`nav-link d-flex align-items-center justify-content-center `}
 								>
-									<CreditCardIcon fontSize='small' />
+									<CreditCardIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 										Quản lý thẻ thư viện
 									</span>
@@ -211,7 +205,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 									to={"/admin/violation-types"}
 									className={`nav-link d-flex align-items-center justify-content-center `}
 								>
-									<ReportProblemIcon fontSize='small' />
+									<ReportProblemIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 										Quản lý vi phạm
 									</span>
@@ -226,7 +220,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 									to={"/admin/feedback"}
 									className={`nav-link d-flex align-items-center justify-content-center `}
 								>
-									<FeedbackIcon fontSize='small' />
+									<FeedbackIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
 										Feedback
 									</span>
@@ -244,20 +238,20 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 						aria-haspopup='true'
 						aria-expanded='false'
 					>
-						<PersonIcon fontSize='small' />
+						<PersonIcon fontSize='small'/>
 						<span className='ms-2'>{userRole}</span>
 					</a>
 					<div className='dropdown-menu' aria-labelledby='triggerId'>
 						<Link
 							className='dropdown-item'
-							style={{ cursor: "pointer" }}
+							style={{cursor: "pointer"}}
 							to={"/profile"}
 						>
 							Thông tin cá nhân
 						</Link>
 						<a
 							className='dropdown-item'
-							style={{ cursor: "pointer" }}
+							style={{cursor: "pointer"}}
 							onClick={() => {
 								setLoggedIn(false);
 								setCartList([]);
@@ -271,4 +265,4 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 			</div>
 		</div>
 	);
-};
+}

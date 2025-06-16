@@ -3,6 +3,7 @@
 // Các endpoint mà cả Admin và Staff đều có quyền truy cập
 export const AdminStaffEndpoints = [
     "/admin/book",        // Quản lý sách
+    "/admin/book-item",   // Quản lý BookItem
     "/admin/genre",       // Quản lý thể loại
     "/admin/user",        // Quản lý tài khoản
     "/admin/order",       // Quản lý đơn hàng
