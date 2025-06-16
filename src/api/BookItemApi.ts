@@ -1,5 +1,6 @@
 import { endpointBE } from "../layouts/utils/Constant";
 import BookItemModel from "../model/BookItemModel";
+import BookModel from "../model/BookModel";
 
 interface BookItemResponse {
     bookItemList: BookItemModel[];
@@ -42,6 +43,7 @@ export async function getAllBookItems(size: number = 10, page: number = 0): Prom
 export async function getBookItemById(id: number): Promise<BookItemModel> {
     const token = localStorage.getItem("token");
 
+    // Gọi API BookItem
     const response = await fetch(`${endpointBE}/book-items/${id}`, {
         method: "GET",
         headers: {
@@ -51,10 +53,63 @@ export async function getBookItemById(id: number): Promise<BookItemModel> {
     });
 
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Lỗi khi lấy BookItem! Status: ${response.status}`);
     }
 
-    return response.json();
+    const bookItemData = await response.json();
+    const bookUrl = bookItemData._links?.book?.href;
+
+    if (!bookUrl) {
+        throw new Error("Không tìm thấy đường dẫn đến sách trong BookItem.");
+    }
+
+    // Gọi API Book
+    const bookResponse = await fetch(bookUrl, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+    });
+
+    if (!bookResponse.ok) {
+        throw new Error(`Lỗi khi lấy Book! Status: ${bookResponse.status}`);
+    }
+
+    const bookData = await bookResponse.json();
+
+    const book = new BookModel(
+        bookData.id ?? null,
+        bookData.idBook,
+        bookData.nameBook ?? "",
+        bookData.author ?? "",
+        bookData.isbn ?? "",
+        bookData.description ?? "",
+        bookData.listPrice,
+        bookData.sellPrice,
+        bookData.quantityForSold ?? 0,
+        bookData.quantityForBorrow ?? 0,
+        bookData.borrowQuantity ?? 0,
+        bookData.avgRating ?? 0,
+        bookData.soldQuantity ?? 0,
+        bookData.discountPercent ?? 0,
+        bookData.thumbnail ?? "",
+        bookData.relatedImg ?? [],
+        bookData.idGenres ?? [],
+        bookData.idDdcCategory ?? [],
+        bookData.genresList ?? [],
+        bookData.ddcCategoryList ?? [],
+        bookData.isFavorited ?? false
+    );
+
+    return new BookItemModel(
+        bookItemData.idBookItem,
+        bookItemData.barcode,
+        bookItemData.status,
+        bookItemData.location,
+        bookItemData.condition,
+        book
+    );
 }
 
 /**

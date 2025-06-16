@@ -285,79 +285,12 @@ export const BookItemForm: React.FC<BookItemFormProps> = (props) => {
                             <Box sx={{ "& .MuiTextField-root": { mb: 3 } }}>
                                 <TextField
                                     required
-                                    label="Mã vạch"
-                                    fullWidth
-                                    value={bookItem.barcode}
-                                    onChange={(e) =>
-                                        setBookItem({ ...bookItem, barcode: e.target.value })
-                                    }
-                                    size="small"
-                                />
-
-                                <FormControl fullWidth required size="small" sx={{ mb: 3 }}>
-                                    <InputLabel>Trạng thái</InputLabel>
-                                    <Select
-                                        value={bookItem.status}
-                                        label="Trạng thái"
-                                        onChange={(e) =>
-                                            setBookItem({ ...bookItem, status: e.target.value })
-                                        }
-                                    >
-                                        {BOOK_STATUS_OPTIONS.map((option) => (
-                                            <MenuItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-
-                                <TextField
-                                    required
                                     label="Vị trí"
                                     fullWidth
                                     value={bookItem.location}
                                     onChange={(e) =>
                                         setBookItem({ ...bookItem, location: e.target.value })
                                     }
-                                    size="small"
-                                />
-                            </Box>
-                        </Grid>
-
-                        <Grid item xs={12} md={6}>
-                            <Box sx={{ "& .MuiTextField-root": { mb: 3 } }}>
-                                <FormControl fullWidth required size="small" sx={{ mb: 3 }}>
-                                    <InputLabel>Tình trạng</InputLabel>
-                                    <Select
-                                        value={bookItem.condition}
-                                        label="Tình trạng"
-                                        onChange={(e) =>
-                                            setBookItem({ ...bookItem, condition: Number(e.target.value) })
-                                        }
-                                    >
-                                        {CONDITION_OPTIONS.map((option) => (
-                                            <MenuItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-
-                                <Autocomplete
-                                    options={booksList}
-                                    getOptionLabel={(option) => `${option.nameBook} - ${option.author}`}
-                                    value={selectedBook}
-                                    onChange={(event, newValue) => {
-                                        setSelectedBook(newValue);
-                                    }}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Chọn sách"
-                                            required
-                                            size="small"
-                                        />
-                                    )}
                                     size="small"
                                 />
                             </Box>
