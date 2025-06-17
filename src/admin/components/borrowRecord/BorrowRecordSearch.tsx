@@ -105,7 +105,7 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
             details.forEach(detail => {
                 if (!detail.isReturned) {
                     initialState[detail.id] = {
-                        violationCode: "Không vi phạm",
+                        violationCode: "",
                         notes: "",
                         isUpdating: false,
                     };
@@ -237,32 +237,16 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
                 isReturned: true,
                 returnDate: currentDate,
                 notes: returnState.notes,
-                code: returnState.violationCode,
+                code: returnState.violationCode === "Không vi phạm" ? "" : returnState.violationCode,
             };
 
             await BorrowRecordApi.updateBookReturnStatus(updateParams);
 
-            // Update local details
-            const updatedDetails = details.map(detail =>
-                detail.id === detailId
-                    ? {
-                        ...detail,
-                        isReturned: true,
-                        returnDate: currentDate,
-                        notes: returnState.notes,
-                        violationType: returnState.violationCode !== "Không vi phạm"
-                            ? {
-                                ...violationTypes.find(vt => vt.code === returnState.violationCode)!,
-                                idLibraryViolationType: violationTypes.find(vt => vt.code === returnState.violationCode)?.id || 0
-                            }
-                            : undefined,
-                    }
-                    : detail
-            );
+            // ✅ Gọi lại chi tiết mới nhất từ backend (có lỗi "Trả muộn" nếu có)
+            const refreshedDetails = await BorrowRecordApi.fetchBorrowRecordDetails(record!.id);
+            setDetails(refreshedDetails);
 
-            setDetails(updatedDetails);
-
-            // Remove from bookReturnStates since it's returned
+            // ✅ Xóa khỏi trạng thái local
             setBookReturnStates(prev => {
                 const newState = { ...prev };
                 delete newState[detailId];
@@ -284,6 +268,7 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
             }));
         }
     };
+
 
     const handleQuickAction = async (actionType: "approve_borrow" | "complete_return") => {
         if (!record) return;
@@ -600,8 +585,6 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
                                     <th style={{ width: "5%" }}>STT</th>
                                     <th style={{ width: "25%" }}>Tên sách</th>
                                     <th style={{ width: "12%" }}>Mã vạch</th>
-                                    <th style={{ width: "10%" }}>Vị trí</th>
-                                    <th style={{ width: "8%" }}>Tình trạng</th>
                                     {props.searchType === "return" && <th style={{ width: "8%" }}>Trạng thái</th>}
                                     {props.searchType === "return" && <th style={{ width: "10%" }}>Ngày trả</th>}
                                     {props.searchType === "return" && <th style={{ width: "12%" }}>Vi phạm</th>}
@@ -625,15 +608,6 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
                                             </td>
                                             <td>
                                                 <span className="fw-bold">{detail.bookItem.barcode}</span>
-                                            </td>
-                                            <td>{detail.bookItem.location}</td>
-                                            <td>
-                                                <span className={`badge ${
-                                                    detail.bookItem.condition >= 80 ? "bg-success" :
-                                                        detail.bookItem.condition >= 60 ? "bg-warning text-dark" : "bg-danger"
-                                                }`}>
-                                                    {detail.bookItem.condition}%
-                                                </span>
                                             </td>
                                             {props.searchType === "return" && (
                                                 <>

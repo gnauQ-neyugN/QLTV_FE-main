@@ -3,6 +3,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import DoneAllIcon from "@mui/icons-material/DoneAll";
 import {
     Box,
     Chip,
@@ -31,6 +32,7 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<BorrowRecord[]>([]);
     const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
+    const [bulkProcessing, setBulkProcessing] = useState(false);
 
     // State for detail modal
     const [detailModal, setDetailModal] = useState(false);
@@ -97,9 +99,6 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
     const handleReject = async (recordId: number) => {
         if (processingIds.has(recordId)) return;
 
-        const confirmed = window.confirm("Bạn có chắc chắn muốn từ chối phiếu mượn này?");
-        if (!confirmed) return;
-
         setProcessingIds(prev => new Set(prev).add(recordId));
 
         try {
@@ -124,6 +123,50 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
                 newSet.delete(recordId);
                 return newSet;
             });
+        }
+    };
+
+    // Hàm phê duyệt tất cả
+    const handleApproveAll = async () => {
+        if (bulkProcessing || data.length === 0) return;
+
+        setBulkProcessing(true);
+        let successCount = 0;
+        let errorCount = 0;
+
+        try {
+            // Thực hiện phê duyệt tuần tự để tránh quá tải server
+            for (const record of data) {
+                try {
+                    await BorrowRecordApi.updateBorrowRecord({
+                        idBorrowRecord: record.id,
+                        status: BORROW_RECORD_STATUS.APPROVED,
+                        notes: "Phiếu mượn đã được phê duyệt (hàng loạt)"
+                    });
+                    successCount++;
+                } catch (error) {
+                    console.error(`Error approving record ${record.id}:`, error);
+                    errorCount++;
+                }
+            }
+
+            // Hiển thị thông báo kết quả
+            if (successCount > 0) {
+                toast.success(`Đã phê duyệt thành công ${successCount} phiếu mượn`);
+            }
+            if (errorCount > 0) {
+                toast.error(`Có ${errorCount} phiếu mượn không thể phê duyệt`);
+            }
+
+            // Refresh data
+            if (props.setKeyCountReload) {
+                props.setKeyCountReload(Math.random());
+            }
+        } catch (error) {
+            console.error("Error in bulk approve:", error);
+            toast.error("Lỗi khi phê duyệt hàng loạt");
+        } finally {
+            setBulkProcessing(false);
         }
     };
 
@@ -220,7 +263,7 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
                                 size="small"
                                 color="success"
                                 onClick={() => handleApprove(item.id as number)}
-                                disabled={isProcessing}
+                                disabled={isProcessing || bulkProcessing}
                             >
                                 {isProcessing ? (
                                     <CircularProgress size={16} />
@@ -235,7 +278,7 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
                                 size="small"
                                 color="error"
                                 onClick={() => handleReject(item.id as number)}
-                                disabled={isProcessing}
+                                disabled={isProcessing || bulkProcessing}
                             >
                                 <CancelOutlinedIcon fontSize="small" />
                             </IconButton>
@@ -272,6 +315,20 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
                         Các phiếu mượn đang chờ xử lý và phê duyệt
                     </Typography>
                 </div>
+
+                {/* Nút phê duyệt tất cả */}
+                {data.length > 0 && (
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={bulkProcessing ? <CircularProgress size={16} color="inherit" /> : <DoneAllIcon />}
+                        onClick={handleApproveAll}
+                        disabled={bulkProcessing}
+                        sx={{ minWidth: 160 }}
+                    >
+                        {bulkProcessing ? "Đang xử lý..." : `Phê duyệt tất cả (${data.length})`}
+                    </Button>
+                )}
             </Box>
 
             {data.length === 0 ? (
@@ -421,7 +478,7 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
                                 onClick={() => handleApprove(selectedRecord.id)}
                                 color="success"
                                 variant="contained"
-                                disabled={processingIds.has(selectedRecord.id)}
+                                disabled={processingIds.has(selectedRecord.id) || bulkProcessing}
                                 startIcon={<CheckCircleOutlineIcon />}
                             >
                                 Phê duyệt
@@ -430,7 +487,7 @@ export const BorrowRequestTable: React.FC<BorrowRequestTableProps> = (props) => 
                                 onClick={() => handleReject(selectedRecord.id)}
                                 color="error"
                                 variant="outlined"
-                                disabled={processingIds.has(selectedRecord.id)}
+                                disabled={processingIds.has(selectedRecord.id) || bulkProcessing}
                                 startIcon={<CancelOutlinedIcon />}
                             >
                                 Từ chối

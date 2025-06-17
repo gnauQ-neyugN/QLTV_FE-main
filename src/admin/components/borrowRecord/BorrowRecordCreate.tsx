@@ -23,21 +23,18 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
     const [libraryCards, setLibraryCards] = useState<LibraryCardWithUser[]>([]);
     const [filteredLibraryCards, setFilteredLibraryCards] = useState<LibraryCardWithUser[]>([]);
     const [selectedCard, setSelectedCard] = useState<LibraryCardWithUser | null>(null);
-    const [books, setBooks] = useState<BookModel[]>([]);
-    const [filteredBooks, setFilteredBooks] = useState<BookModel[]>([]);
-    const [availableBookItems, setAvailableBookItems] = useState<BookItemModel[]>([]);
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
-    const [selectedBook, setSelectedBook] = useState<BookModel | null>(null);
-    const [selectedBookItem, setSelectedBookItem] = useState<BookItemModel | null>(null);
     const [notes, setNotes] = useState<string>('');
+    const [suggestedBookItems, setSuggestedBookItems] = useState<BookItemModel[]>([]);
+
+    // Barcode input states
+    const [barcodeInput, setBarcodeInput] = useState<string>('');
+    const [loadingBarcode, setLoadingBarcode] = useState(false);
 
     // Search states
     const [cardSearchTerm, setCardSearchTerm] = useState<string>('');
-    const [bookSearchTerm, setBookSearchTerm] = useState<string>('');
 
     // Loading states
-    const [loadingBooks, setLoadingBooks] = useState(false);
-    const [loadingBookItems, setLoadingBookItems] = useState(false);
     const [loadingCards, setLoadingCards] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +43,46 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
     const [dueDate, setDueDate] = useState<string>(
         new Date(new Date().setDate(new Date().getDate() + 60)).toISOString().split('T')[0]
     );
+
+    useEffect(() => {
+        const fetchSuggestions = async () => {
+            const trimmed = barcodeInput.trim();
+            if (!trimmed) {
+                setSuggestedBookItems([]);
+                return;
+            }
+
+            try {
+                const response = await request(
+                    `${endpointBE}/book/book-items/search-barcode?keyword=${trimmed}`
+                );
+
+                const embedded = response._embedded?.bookItems || [];
+                const suggestions: BookItemModel[] = await Promise.all(
+                    embedded.map(async (item: any) => {
+                        const book = await request(item._links.book.href);
+                        return {
+                            idBookItem: item.idBookItem,
+                            barcode: item.barcode,
+                            status: item.status,
+                            location: item.location,
+                            condition: item.condition,
+                            bookName: item.bookName,
+                            author: item.author
+                        };
+                    })
+                );
+
+                setSuggestedBookItems(suggestions);
+            } catch (error) {
+                console.error('Không thể tìm book item gợi ý', error);
+                setSuggestedBookItems([]);
+            }
+        };
+
+        const delayDebounce = setTimeout(fetchSuggestions, 300); // debounce 300ms
+        return () => clearTimeout(delayDebounce);
+    }, [barcodeInput]);
 
     // Fetch library cards and users
     useEffect(() => {
@@ -71,32 +108,6 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
         fetchLibraryCardsAndUsers();
     }, []);
 
-    // Fetch books
-    useEffect(() => {
-        const fetchBooks = async () => {
-            setLoadingBooks(true);
-            try {
-                // Fetch books using existing API
-                const booksResponse = await getAllBook(1000, 0);
-
-                // Filter books that have quantity for borrow > 0
-                const availableBooks = booksResponse.bookList.filter(
-                    book => book.quantityForBorrow && book.quantityForBorrow > 0
-                );
-
-                setBooks(availableBooks);
-                setFilteredBooks(availableBooks);
-            } catch (error) {
-                console.error('Error fetching books:', error);
-                setError('Không thể tải thông tin sách. Vui lòng thử lại sau.');
-            } finally {
-                setLoadingBooks(false);
-            }
-        };
-
-        fetchBooks();
-    }, []);
-
     // Filter library cards based on search term
     useEffect(() => {
         if (!cardSearchTerm.trim()) {
@@ -120,85 +131,94 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
         setFilteredLibraryCards(filtered);
     }, [cardSearchTerm, libraryCards]);
 
-    // Filter books based on search term
-    useEffect(() => {
-        if (!bookSearchTerm.trim()) {
-            setFilteredBooks(books);
+    // Fetch BookItem by barcode
+    const fetchBookItemByBarcode = async (barcode: string): Promise<BookItemModel | null> => {
+        try {
+            // Search for BookItem by barcode
+            const bookItemResponse = await request(`${endpointBE}/book-items/search/findByBarcode?barcode=${barcode}`);
+
+            if (!bookItemResponse) {
+                return null;
+            }
+
+            // Get the book information
+            const bookResponse = await request(bookItemResponse._links.book.href);
+
+            // Create BookItemModel with complete book information
+            const bookItemModel: BookItemModel = {
+                idBookItem: bookItemResponse.idBookItem,
+                barcode: bookItemResponse.barcode,
+                status: bookItemResponse.status,
+                location: bookItemResponse.location,
+                condition: bookItemResponse.condition,
+                book: {
+                    idBook: bookResponse.idBook,
+                    nameBook: bookResponse.nameBook,
+                    author: bookResponse.author,
+                    isbn: bookResponse.isbn,
+                    thumbnail: bookResponse.thumbnail,
+                    listPrice: bookResponse.listPrice,
+                    sellPrice: bookItemResponse.sellPrice,
+                    avgRating: bookResponse.avgRating,
+                    quantityForBorrow: bookResponse.quantityForBorrow,
+                    borrowQuantity: bookResponse.borrowQuantity,
+                    description: bookResponse.description
+                }
+            };
+
+            return bookItemModel;
+        } catch (error) {
+            console.error('Error fetching book item:', error);
+            return null;
+        }
+    };
+
+    const handleBarcodeSubmit = async () => {
+        if (!barcodeInput.trim()) {
+            toast.warning('Vui lòng nhập mã barcode');
             return;
         }
 
-        const filtered = books.filter(book => {
-            const searchLower = bookSearchTerm.toLowerCase();
-            return (
-                book.nameBook?.toLowerCase().includes(searchLower) ||
-                book.isbn?.toLowerCase().includes(searchLower) ||
-                book.author?.toLowerCase().includes(searchLower)
-            );
-        });
+        // Check if this barcode is already in cart
+        const existingItem = cartItems.find(item => item.bookItem.barcode === barcodeInput.trim());
+        if (existingItem) {
+            toast.warning('Bản sao sách này đã được thêm vào danh sách mượn');
+            setBarcodeInput('');
+            return;
+        }
 
-        setFilteredBooks(filtered);
-    }, [bookSearchTerm, books]);
+        setLoadingBarcode(true);
+        try {
+            const bookItem = await fetchBookItemByBarcode(barcodeInput.trim());
 
-    // Fetch available book items when a book is selected
-    useEffect(() => {
-        const fetchAvailableBookItems = async () => {
-            if (!selectedBook) {
-                setAvailableBookItems([]);
+            if (!bookItem) {
+                toast.error('Không tìm thấy bản sao sách với mã barcode này');
                 return;
             }
 
-            setLoadingBookItems(true);
-            try {
-                const response = await request(`${endpointBE}/books/${selectedBook.idBook}/listBookItems`);
-
-                if (response && response._embedded && response._embedded.bookItems) {
-                    const availableItems = response._embedded.bookItems.filter((item: any) =>
-                        item.status === 'AVAILABLE' || item.status === 'Có sẵn'
-                    );
-
-                    const bookItemModels: BookItemModel[] = availableItems.map((item: any) => ({
-                        idBookItem: item.idBookItem,
-                        barcode: item.barcode,
-                        status: item.status,
-                        location: item.location,
-                        condition: item.condition,
-                        book: selectedBook
-                    }));
-
-                    setAvailableBookItems(bookItemModels);
-                } else {
-                    setAvailableBookItems([]);
-                }
-            } catch (error) {
-                console.error('Error fetching book items:', error);
-                setAvailableBookItems([]);
-                toast.error('Không thể tải thông tin bản sao sách');
-            } finally {
-                setLoadingBookItems(false);
+            // Check if the book item is available
+            if (bookItem.status !== 'Có sẵn' && bookItem.status !== 'AVAILABLE') {
+                toast.error(`Bản sao sách này không sẵn sàng để mượn. Trạng thái hiện tại: ${bookItem.status}`);
+                return;
             }
-        };
 
-        fetchAvailableBookItems();
-    }, [selectedBook]);
-
-    const handleAddToCart = () => {
-        if (!selectedBookItem) {
-            toast.warning('Vui lòng chọn bản sao sách cụ thể');
-            return;
+            // Add to cart
+            setCartItems([...cartItems, { bookItem }]);
+            setBarcodeInput('');
+            toast.success('Đã thêm sách vào danh sách mượn');
+        } catch (error: any) {
+            console.error('Error adding book to cart:', error);
+            toast.error('Lỗi khi thêm sách: ' + (error.message || 'Vui lòng thử lại'));
+        } finally {
+            setLoadingBarcode(false);
         }
+    };
 
-        const existingItem = cartItems.find(item => item.bookItem.idBookItem === selectedBookItem.idBookItem);
-        if (existingItem) {
-            toast.warning('Bản sao sách này đã được thêm vào danh sách mượn');
-            return;
+    const handleBarcodeKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleBarcodeSubmit();
         }
-
-        setCartItems([...cartItems, { bookItem: selectedBookItem }]);
-        setSelectedBook(null);
-        setSelectedBookItem(null);
-        setAvailableBookItems([]);
-        setBookSearchTerm('');
-        toast.success('Đã thêm sách vào danh sách mượn');
     };
 
     const handleRemoveFromCart = (index: number) => {
@@ -211,12 +231,6 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
     const handleCardSelect = (card: LibraryCardWithUser) => {
         setSelectedCard(card);
         setCardSearchTerm(card.cardNumber || '');
-    };
-
-    const handleBookSelect = (book: BookModel) => {
-        setSelectedBook(book);
-        setSelectedBookItem(null);
-        setBookSearchTerm(book.nameBook || '');
     };
 
     const validateForm = (): boolean => {
@@ -265,7 +279,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
             };
 
             const token = localStorage.getItem("token");
-            const response = await fetch(`${endpointBE}/borrow-record/add-borrow-record`, {
+            const response = await fetch(`${endpointBE}/borrow-record/create-borrow-record`, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${token}`,
@@ -293,6 +307,39 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
             setSubmitting(false);
         }
     };
+
+    const renderBarcodeSuggestions = () => {
+        if (!barcodeInput.trim() || suggestedBookItems.length === 0) return null;
+
+        return (
+            <div className="card mt-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                <div className="list-group list-group-flush">
+                    {suggestedBookItems.slice(0, 10).map(item => (
+                        <button
+                            key={item.idBookItem}
+                            type="button"
+                            className="list-group-item list-group-item-action"
+                            onClick={() => {
+                                setBarcodeInput(item.barcode);
+                                setSuggestedBookItems([]);
+                            }}
+                        >
+                            <div className="d-flex justify-content-between">
+                                <div>
+                                    <div className="fw-bold">{item.barcode}</div>
+                                    <small className="text-muted">
+                                        {item.book?.nameBook} - {item.book?.author}
+                                    </small>
+                                </div>
+                                <span className="badge bg-secondary">{item.status}</span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
 
     const renderCardSearchResults = () => {
         if (!cardSearchTerm.trim() || filteredLibraryCards.length === 0) return null;
@@ -330,45 +377,6 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
         );
     };
 
-    const renderBookSearchResults = () => {
-        if (!bookSearchTerm.trim() || filteredBooks.length === 0) return null;
-
-        return (
-            <div className="card mt-2" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                <div className="list-group list-group-flush">
-                    {filteredBooks.slice(0, 10).map(book => (
-                        <button
-                            key={book.idBook}
-                            type="button"
-                            className="list-group-item list-group-item-action"
-                            onClick={() => handleBookSelect(book)}
-                        >
-                            <div className="d-flex align-items-center">
-                                {book.thumbnail && (
-                                    <img
-                                        src={book.thumbnail}
-                                        alt={book.nameBook}
-                                        width="40"
-                                        height="60"
-                                        style={{ objectFit: 'cover' }}
-                                        className="me-3"
-                                    />
-                                )}
-                                <div className="flex-grow-1">
-                                    <div className="fw-bold">{book.nameBook}</div>
-                                    <div className="text-muted">Tác giả: {book.author}</div>
-                                    <div className="text-muted">ISBN: {book.isbn}</div>
-                                    <small className="text-success">
-                                        Còn lại: {book.quantityForBorrow} bản
-                                    </small>
-                                </div>
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="container bg-white p-4 rounded">
@@ -440,84 +448,51 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                     </div>
                 </div>
 
-                {/* Book Selection */}
+                {/* Barcode Input Section */}
                 <div className="col-12 mb-4">
-                    <h5 className="mb-2">Chọn sách và bản sao</h5>
+                    <h5 className="mb-2">Thêm sách bằng mã barcode</h5>
                     <div className="card p-3">
-                        <div className="row">
-                            <div className="col-6">
-                                <label className="form-label">Tìm kiếm sách</label>
+                        <div className="row align-items-end">
+                            <div className="col-8">
+                                <label className="form-label">
+                                    <i className="fas fa-barcode me-2"></i>
+                                    Nhập mã barcode của bản sao sách
+                                </label>
                                 <input
                                     type="text"
                                     className="form-control"
-                                    placeholder="Nhập tên sách hoặc ISBN để tìm kiếm..."
-                                    value={bookSearchTerm}
-                                    onChange={(e) => setBookSearchTerm(e.target.value)}
-                                    disabled={loadingBooks}
+                                    placeholder="Nhập hoặc quét mã barcode..."
+                                    value={barcodeInput}
+                                    onChange={(e) => setBarcodeInput(e.target.value)}
+                                    onKeyPress={handleBarcodeKeyPress}
+                                    disabled={loadingBarcode}
+                                    autoFocus
                                 />
-                                {loadingBooks && <div className="text-muted mt-1">Đang tải...</div>}
-
-                                {renderBookSearchResults()}
+                                {renderBarcodeSuggestions()}
+                                <small className="form-text text-muted">
+                                    Nhập mã barcode và nhấn Enter hoặc click "Thêm vào danh sách"
+                                </small>
                             </div>
-
-                            <div className="col-6">
-                                <label className="form-label">Chọn bản sao cụ thể</label>
-                                <select
-                                    className="form-control"
-                                    value={selectedBookItem?.idBookItem || ''}
-                                    onChange={(e) => {
-                                        const itemId = parseInt(e.target.value);
-                                        const item = availableBookItems.find(i => i.idBookItem === itemId);
-                                        setSelectedBookItem(item || null);
-                                    }}
-                                    disabled={!selectedBook || loadingBookItems}
+                            <div className="col-4">
+                                <button
+                                    type="button"
+                                    className="btn btn-primary w-100"
+                                    onClick={handleBarcodeSubmit}
+                                    disabled={!barcodeInput.trim() || loadingBarcode}
                                 >
-                                    <option value="">-- Chọn bản sao --</option>
-                                    {availableBookItems.map(item => (
-                                        <option key={item.idBookItem} value={item.idBookItem}>
-                                            {item.barcode} - {item.location} (Tình trạng: {item.condition}%)
-                                        </option>
-                                    ))}
-                                </select>
-                                {loadingBookItems && <div className="text-muted mt-1">Đang tải...</div>}
+                                    {loadingBarcode ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            Đang xử lý...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fas fa-plus me-2"></i>
+                                            Thêm vào danh sách
+                                        </>
+                                    )}
+                                </button>
                             </div>
-                        </div>
-
-                        {selectedBook && (
-                            <div className="card mt-3">
-                                <div className="card-body">
-                                    <div className="d-flex align-items-center">
-                                        {selectedBook.thumbnail && (
-                                            <img
-                                                src={selectedBook.thumbnail}
-                                                alt={selectedBook.nameBook}
-                                                width="60"
-                                                height="80"
-                                                style={{ objectFit: 'cover' }}
-                                                className="me-3"
-                                            />
-                                        )}
-                                        <div>
-                                            <h6 className="fw-bold">{selectedBook.nameBook}</h6>
-                                            <div className="text-muted">Tác giả: {selectedBook.author}</div>
-                                            <div className="text-muted">ISBN: {selectedBook.isbn}</div>
-                                            <div className="text-muted">Số lượng còn lại: {selectedBook.quantityForBorrow}</div>
-                                            <div className="text-muted">Bản sao có sẵn: {availableBookItems.length}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="mt-3 d-flex justify-content-end">
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleAddToCart}
-                                disabled={!selectedBookItem}
-                            >
-                                <i className="fas fa-plus me-2"></i>
-                                Thêm vào danh sách mượn
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -538,14 +513,20 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                     <th>Mã vạch</th>
                                     <th>Vị trí</th>
                                     <th>Tình trạng</th>
+                                    <th>Trạng thái</th>
                                     <th className="text-center">Thao tác</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 {cartItems.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-3">
-                                            <div className="text-muted">Chưa có sách nào được thêm</div>
+                                        <td colSpan={7} className="text-center py-4">
+                                            <div className="text-muted">
+                                                <i className="fas fa-books fa-2x mb-2 d-block"></i>
+                                                Chưa có sách nào được thêm
+                                                <br />
+                                                <small>Nhập mã barcode ở trên để thêm sách</small>
+                                            </div>
                                         </td>
                                     </tr>
                                 ) : (
@@ -565,15 +546,19 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                                         />
                                                     )}
                                                     <div>
-                                                        <div>{item.bookItem.book.nameBook}</div>
-                                                        <small className="text-muted">{item.bookItem.book.author}</small>
+                                                        <div className="fw-bold">{item.bookItem.book.nameBook}</div>
+                                                        <small className="text-muted">Tác giả: {item.bookItem.book.author}</small>
+                                                        <br />
+                                                        <small className="text-muted">ISBN: {item.bookItem.book.isbn}</small>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>
-                                                <span className="badge bg-outline-secondary">{item.bookItem.barcode}</span>
+                                                <span className="badge bg-secondary">{item.bookItem.barcode}</span>
                                             </td>
-                                            <td>{item.bookItem.location}</td>
+                                            <td>
+                                                <small>{item.bookItem.location}</small>
+                                            </td>
                                             <td>
                                                 <span className={`badge ${
                                                     item.bookItem.condition >= 80 ? "bg-success" :
@@ -581,6 +566,9 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                                 }`}>
                                                     {item.bookItem.condition}%
                                                 </span>
+                                            </td>
+                                            <td>
+                                                <span className="badge bg-success">{item.bookItem.status}</span>
                                             </td>
                                             <td className="text-center">
                                                 <button
@@ -597,6 +585,14 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                 </tbody>
                             </table>
                         </div>
+                        {cartItems.length > 0 && (
+                            <div className="card-footer text-muted">
+                                <small>
+                                    <i className="fas fa-info-circle me-1"></i>
+                                    Tổng cộng: {cartItems.length} bản sao sách được chọn
+                                </small>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -630,7 +626,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                     rows={3}
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="Nhập ghi chú..."
+                                    placeholder="Nhập ghi chú (nếu có)..."
                                 />
                             </div>
                         </div>
@@ -645,6 +641,7 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                     className="btn btn-outline-danger"
                     onClick={handleCloseModal}
                 >
+                    <i className="fas fa-times me-2"></i>
                     Hủy
                 </button>
 
@@ -659,7 +656,10 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                             Đang xử lý...
                         </>
                     ) : (
-                        "Tạo phiếu mượn"
+                        <>
+                            <i className="fas fa-save me-2"></i>
+                            Tạo phiếu mượn
+                        </>
                     )}
                 </button>
             </div>

@@ -1,5 +1,5 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import {BrowserRouter, Navigate, Route, Routes, useLocation} from "react-router-dom";
 import "./App.css";
 import Navbar from "./layouts/header-footer/Navbar";
 import Footer from "./layouts/header-footer/Footer";
@@ -41,65 +41,86 @@ import LibraryViolationTypeManagementPage from "./admin/LibraryCardViolationType
 import RoleManagement from "./admin/RoleManagement";
 // Import BookItem Management
 import BookItemManagementPage from "./admin/BookItemManagement";
+import { useEffect } from "react";
+import { jwtDecode } from "jwt-decode";
+import { getDefaultAdminPath, hasEndpointAccess } from "./admin/AdminEnpoint";
+
+interface JwtPayload {
+	id: any;
+	role: string;
+	avatar: string;
+	lastName: string;
+	enabled: boolean;
+}
+
+// Component bảo vệ route cho admin
+const ProtectedAdminRoute = ({ children, requiredPath }: { children: React.ReactNode, requiredPath: string }) => {
+	const [userRole, setUserRole] = useState<string>('');
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		const token = localStorage.getItem("token");
+		if (token) {
+			try {
+				const decodedToken = jwtDecode(token) as JwtPayload;
+				setUserRole(decodedToken.role || '');
+			} catch (error) {
+				console.error('Error decoding token:', error);
+				setUserRole('');
+			}
+		}
+		setLoading(false);
+	}, []);
+
+	if (loading) {
+		return <div>Loading...</div>;
+	}
+
+	// Kiểm tra quyền truy cập
+	if (!hasEndpointAccess(userRole, requiredPath)) {
+		return <Navigate to="/error-403" replace />;
+	}
+
+	return <>{children}</>;
+};
 
 const MyRoutes = () => {
 	const [reloadAvatar, setReloadAvatar] = useState(0);
-
-	// XỬ LÝ ẨN HIỆN NAV VÀ FOOTER /////////////////
 	const location = useLocation();
-
-	// Check if the current path starts with '/admin'
 	const isAdminPath = location.pathname.startsWith("/admin");
-	///////////////////////////////////////////////
 
 	return (
 		<AuthProvider>
 			<CartItemProvider>
 				<BorrowCartProvider>
 					<ConfirmProvider>
-						{/* Customer */}
+						{/* Customer routes */}
 						{!isAdminPath && <Navbar key={reloadAvatar} />}
 						<Routes>
+							{/* Customer Routes */}
 							<Route path='/' element={<HomePage />} />
 							<Route path='/book/:idBook' element={<BookDetail />} />
 							<Route path='/about' element={<About />} />
-							<Route
-								path='/search/:idGenreParam'
-								element={<FilterPage />}
-							/>
+							<Route path='/search/:idGenreParam' element={<FilterPage />} />
 							<Route path='/search' element={<FilterPage />} />
-							<Route
-								path='/my-favorite-books'
-								element={<MyFavoriteBooksPage />}
-							/>
+							<Route path='/my-favorite-books' element={<MyFavoriteBooksPage />} />
 							<Route path='/cart' element={<CartPage />} />
 							<Route path='/borrow-cart' element={<BorrowCartPage />} />
 							<Route path='/borrow-records' element={<BorrowRecordsPage />} />
 							<Route path='/register' element={<RegisterPage />} />
 							<Route path='/login' element={<LoginPage />} />
-							<Route
-								path='/profile'
-								element={<ProfilePage setReloadAvatar={setReloadAvatar} />}
-							/>
-							<Route
-								path='/active/:email/:activationCode'
-								element={<ActiveAccount />}
-							/>
+							<Route path='/profile' element={<ProfilePage setReloadAvatar={setReloadAvatar} />} />
+							<Route path='/active/:email/:activationCode' element={<ActiveAccount />} />
 							<Route path='/forgot-password' element={<ForgotPassword />} />
 							<Route path='/policy' element={<PolicyPage />} />
 							<Route path='/feedback' element={<FeedbackCustomerPage />} />
 							<Route path='/error-403' element={<Error403Page />} />
-							<Route
-								path='/check-out/status'
-								element={<CheckoutStatus />}
-							/>
-							{!isAdminPath && (
-								<Route path='*' element={<Error404Page />} />
-							)}
+							<Route path='/check-out/status' element={<CheckoutStatus />} />
+							{!isAdminPath && <Route path='*' element={<Error404Page />} />}
 						</Routes>
 						{!isAdminPath && <Footer />}
 
-						{/* Admin */}
+						{/* Admin routes */}
 						{isAdminPath && (
 							<div className='row overflow-hidden w-100'>
 								<div className='col-2 col-md-3 col-lg-2'>
@@ -107,55 +128,109 @@ const MyRoutes = () => {
 								</div>
 								<div className='col-10 col-md-9 col-lg-10'>
 									<Routes>
-										<Route path='/admin' element={<DashboardPage />} />
+										{/* Admin/Staff shared routes */}
+										<Route
+											path='/admin'
+											element={
+												<AdminRedirectRoute />
+											}
+										/>
+
+										{/* Dashboard - chỉ Admin */}
 										<Route
 											path='/admin/dashboard'
-											element={<DashboardPage />}
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/dashboard">
+													<DashboardPage />
+												</ProtectedAdminRoute>
+											}
 										/>
-										<Route
-											path='/admin/role-management'
-											element={<RoleManagement />}
-										/>
+
+										{/* Routes cho cả Admin và Staff */}
 										<Route
 											path='/admin/book'
-											element={<BookManagementPage />}
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/book">
+													<BookManagementPage />
+												</ProtectedAdminRoute>
+											}
 										/>
 										<Route
 											path='/admin/book-item'
-											element={<BookItemManagementPage />}
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/book-item">
+													<BookItemManagementPage />
+												</ProtectedAdminRoute>
+											}
 										/>
 										<Route
 											path='/admin/user'
-											element={<UserManagementPage />}
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/user">
+													<UserManagementPage />
+												</ProtectedAdminRoute>
+											}
 										/>
 										<Route
 											path='/admin/genre'
-											element={<GenreManagementPage />}
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/genre">
+													<GenreManagementPage />
+												</ProtectedAdminRoute>
+											}
 										/>
 										<Route
 											path='/admin/order'
-											element={<OrderManagementPage />}
-										/>
-										<Route
-											path='/admin/feedback'
-											element={<FeedbackPage />}
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/order">
+													<OrderManagementPage />
+												</ProtectedAdminRoute>
+											}
 										/>
 										<Route
 											path='/admin/borrow'
-											element={<BorrowRecordManagementPage />}
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/borrow">
+													<BorrowRecordManagementPage />
+												</ProtectedAdminRoute>
+											}
 										/>
-										{/* Add new routes for library card management */}
 										<Route
 											path='/admin/library-card'
-											element={<LibraryCardManagementPage />}
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/library-card">
+													<LibraryCardManagementPage />
+												</ProtectedAdminRoute>
+											}
+										/>
+
+										{/* Routes chỉ cho Admin */}
+										<Route
+											path='/admin/role-management'
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/role-management">
+													<RoleManagement />
+												</ProtectedAdminRoute>
+											}
+										/>
+										<Route
+											path='/admin/feedback'
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/feedback">
+													<FeedbackPage />
+												</ProtectedAdminRoute>
+											}
 										/>
 										<Route
 											path='/admin/violation-types'
-											element={<LibraryViolationTypeManagementPage />}
+											element={
+												<ProtectedAdminRoute requiredPath="/admin/violation-types">
+													<LibraryViolationTypeManagementPage />
+												</ProtectedAdminRoute>
+											}
 										/>
-										{isAdminPath && (
-											<Route path='*' element={<Error404Page />} />
-										)}
+
+										{isAdminPath && <Route path='*' element={<Error404Page />} />}
 									</Routes>
 								</div>
 							</div>
@@ -170,6 +245,33 @@ const MyRoutes = () => {
 			</CartItemProvider>
 		</AuthProvider>
 	);
+};
+
+// Component redirect admin về trang phù hợp
+const AdminRedirectRoute = () => {
+	const [userRole, setUserRole] = useState<string>('');
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		const token = localStorage.getItem("token");
+		if (token) {
+			try {
+				const decodedToken = jwtDecode(token) as JwtPayload;
+				setUserRole(decodedToken.role || '');
+			} catch (error) {
+				console.error('Error decoding token:', error);
+				setUserRole('');
+			}
+		}
+		setLoading(false);
+	}, []);
+
+	if (loading) {
+		return <div>Loading...</div>;
+	}
+
+	const defaultPath = getDefaultAdminPath(userRole);
+	return <Navigate to={defaultPath} replace />;
 };
 
 function App() {

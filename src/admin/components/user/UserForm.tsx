@@ -51,6 +51,7 @@ export const UserForm: React.FC<UserFormProps> = (props) => {
 		username: "",
 		password: "",
 		avatar: "",
+		identifierCode: "", // Thêm trường mã căn cước công dân
 		role: 3, // Mặc định role Customer (ID = 3)
 		enabled: false, // Mặc định chưa kích hoạt
 	});
@@ -65,6 +66,7 @@ export const UserForm: React.FC<UserFormProps> = (props) => {
 	const [errorEmail, setErrorEmail] = useState("");
 	const [errorPassword, setErrorPassword] = useState("");
 	const [errorPhoneNumber, setErrorPhoneNumber] = useState("");
+	const [errorIdentifierCode, setErrorIdentifierCode] = useState(""); // Thêm error cho mã căn cước
 
 	// Lấy ra role
 	useEffect(() => {
@@ -89,6 +91,7 @@ export const UserForm: React.FC<UserFormProps> = (props) => {
 					dateOfBirth: new Date(response.dateOfBirth),
 					enabled: response.enabled || false, // Thêm trạng thái kích hoạt
 					role: response.role || 3, // Đảm bảo role luôn có giá trị, mặc định Customer
+					identifierCode: response.identifierCode || "", // Thêm identifierCode
 				});
 				setPreviewAvatar(response.avatar);
 			}).catch((error) => {
@@ -97,6 +100,21 @@ export const UserForm: React.FC<UserFormProps> = (props) => {
 			});
 		}
 	}, [props.id, props.option]);
+
+	// Hàm validate mã căn cước công dân
+	const validateIdentifierCode = (code: string) => {
+		// Kiểm tra độ dài và chỉ chứa số
+		if (!code) {
+			setErrorIdentifierCode("Mã căn cước công dân không được để trống");
+			return false;
+		}
+		if (!/^\d{12}$/.test(code)) {
+			setErrorIdentifierCode("Mã căn cước công dân phải có 12 chữ số");
+			return false;
+		}
+		setErrorIdentifierCode("");
+		return true;
+	};
 
 	function hanleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -111,6 +129,11 @@ export const UserForm: React.FC<UserFormProps> = (props) => {
 		// Additional validation for update mode
 		if (props.option === "update" && (typeof props.id !== 'number' || props.id <= 0)) {
 			toast.error("ID người dùng không hợp lệ");
+			return;
+		}
+
+		// Validate mã căn cước khi thêm mới
+		if (props.option === "add" && !validateIdentifierCode(user.identifierCode)) {
 			return;
 		}
 
@@ -153,6 +176,7 @@ export const UserForm: React.FC<UserFormProps> = (props) => {
 							username: "",
 							password: "",
 							avatar: "",
+							identifierCode: "", // Reset mã căn cước
 							role: 3, // Reset về Customer
 							enabled: false,
 						});
@@ -275,12 +299,6 @@ export const UserForm: React.FC<UserFormProps> = (props) => {
 			</Typography>
 			<hr />
 			<div className='container px-5'>
-				{props.option === "add" && (
-					<Alert severity="info" sx={{ mb: 3 }}>
-						<strong>Lưu ý:</strong> Tài khoản mới sẽ được tạo với vai trò Customer và cần được kích hoạt bởi admin.
-					</Alert>
-				)}
-
 				<form onSubmit={hanleSubmit} className='form'>
 					<input type='hidden' value={user.idUser} hidden />
 					<div className='row'>
@@ -362,6 +380,31 @@ export const UserForm: React.FC<UserFormProps> = (props) => {
 									}}
 									size='small'
 								/>
+
+								{/* Thêm trường mã căn cước công dân - chỉ hiển thị khi thêm mới */}
+								{props.option === "add" && (
+									<TextField
+										required
+										id='identifier-code'
+										label='Mã căn cước công dân'
+										style={{ width: "100%" }}
+										error={errorIdentifierCode.length > 0 ? true : false}
+										helperText={errorIdentifierCode}
+										value={user.identifierCode}
+										onChange={(e: any) => {
+											setUser({ ...user, identifierCode: e.target.value });
+											setErrorIdentifierCode("");
+										}}
+										onBlur={(e: any) => {
+											validateIdentifierCode(e.target.value);
+										}}
+										inputProps={{
+											maxLength: 12,
+											pattern: "[0-9]*"
+										}}
+										size='small'
+									/>
+								)}
 
 								<TextField
 									required
@@ -460,45 +503,20 @@ export const UserForm: React.FC<UserFormProps> = (props) => {
 									</Select>
 								</FormControl>
 
-								<FormControl fullWidth size='small' sx={{ mb: 3 }}>
-									<InputLabel id='role-select-label'>
-										Vai trò
-									</InputLabel>
-									<Select
-										labelId='role-select-label'
-										id='role-select'
-										value={getSafeRole(user.role)}
-										label='Vai trò'
-										onChange={(e: any) =>
-											setUser({
-												...user,
-												role: e.target.value as number,
-											})
-										}
-										disabled={props.option === "add"} // Không cho sửa role khi thêm mới
-									>
-										{roles.map((role) => (
-											<MenuItem
-												value={role.idRole}
-												key={role.idRole}
-											>
-												<Chip
-													label={role.nameRole}
-													color={getRoleColor(role.nameRole) as any}
-													size="small"
-													variant="outlined"
-													sx={{ mr: 1 }}
-												/>
-												{role.nameRole}
-											</MenuItem>
-										))}
-									</Select>
-									{props.option === "add" && (
-										<Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-											Vai trò mặc định là Customer và có thể thay đổi sau khi tạo tài khoản
-										</Typography>
-									)}
-								</FormControl>
+								{/* Hiển thị mã căn cước khi update - chỉ đọc */}
+								{props.option === "update" && user.identifierCode && (
+									<TextField
+										id='identifier-code-readonly'
+										label='Mã căn cước công dân'
+										style={{ width: "100%" }}
+										value={user.identifierCode}
+										InputProps={{
+											readOnly: true,
+										}}
+										size='small'
+										sx={{ mb: 3 }}
+									/>
+								)}
 
 								{/* Phần quản lý kích hoạt tài khoản - chỉ hiển thị khi update */}
 								{props.option === "update" && (

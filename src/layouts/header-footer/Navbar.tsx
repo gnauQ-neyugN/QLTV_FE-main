@@ -241,11 +241,11 @@ const Navbar: React.FC<NavbarProps> = (props) => {
 											Phiếu mượn của tôi
 										</Link>
 									</li>
-									{getRoleByToken() === "ADMIN" && (
+									{(getRoleByToken() === "ADMIN" || getRoleByToken() === "STAFF") && (
 										<li>
 											<Link
 												className='dropdown-item'
-												to='/admin/dashboard'
+												to='/admin'  // Sử dụng /admin để tự động redirect dựa trên role
 											>
 												Quản lý
 											</Link>

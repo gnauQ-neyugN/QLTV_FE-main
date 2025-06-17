@@ -272,7 +272,18 @@ const BookCard: React.FC<BookCardProps> = ({ book }) => {
 								}}
 								onMouseEnter={(e) => e.currentTarget.style.color = '#667eea'}
 								onMouseLeave={(e) => e.currentTarget.style.color = '#212529'}>
-								<TextEllipsis text={book.nameBook || ''} limit={35} />
+								<h6 className='card-title mb-2 fw-semibold text-dark'
+									style={{
+										fontSize: "0.9rem",
+										height: "2.2em",
+										overflow: "hidden",
+										display: "-webkit-box",
+										WebkitLineClamp: 2,
+										WebkitBoxOrient: "vertical",
+										lineHeight: "1.1",
+									}}>
+									{book.nameBook || ''}
+								</h6>
 							</h6>
 						</Tooltip>
 					</Link>

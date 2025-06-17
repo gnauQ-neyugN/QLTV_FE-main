@@ -29,6 +29,7 @@ export async function getAllUserRole(): Promise<UserModel[]> {
             username: userData.username,
             role: roleData.nameRole,
             enabled: userData.enabled,
+            identifierCode:userData.identifierCode,
          };
          return user;
       }) ?? []; // Nếu listUsers là undefined, trả về mảng rỗng
@@ -54,6 +55,8 @@ export async function get1User(idUser: any): Promise<UserModel> {
       phoneNumber: responseUser.phoneNumber,
       username: responseUser.username,
       role: responseRole.idRole,
+      enabled: responseUser.enabled,
+      identifierCode: responseUser.identifierCode,
    };
 
    return user;

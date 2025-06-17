@@ -80,6 +80,7 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 		password: "",
 		phoneNumber: "",
 		username: "",
+		identifierCode:"",
 		avatar: "",
 	});
 	const [newPassword, setNewPassword] = useState("");
