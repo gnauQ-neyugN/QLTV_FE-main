@@ -236,7 +236,6 @@ class LibraryCardApi {
 
             const data = await response.json();
             if (data._embedded && data._embedded.libraryCards) {
-                // Process library cards and include user data
                 const processedCards = await Promise.all(
                     data._embedded.libraryCards.map(async (card: any) => {
                         let userName = "Unknown";
@@ -244,22 +243,38 @@ class LibraryCardApi {
                         let violationCount = 0;
 
                         try {
-                            // Get user data if available
-                            if (card._embedded && card._embedded.user) {
+                            // Gán thông tin người dùng nếu có
+                            if (card._embedded?.user) {
                                 const userData = card._embedded.user;
                                 userName = `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || userData.username;
                                 userId = userData.idUser;
                             }
 
-                            // Count violations
-                            if (card._embedded && card._embedded.violationTypes) {
-                                violationCount = card._embedded.violationTypes.length;
+                            // Gọi fetch đến endpoint violationTypes
+                            if (card._links?.violationTypes?.href) {
+                                const violationRes = await fetch(card._links.violationTypes.href, {
+                                    headers: this.getHeaders() // có cần token thì lấy từ đây
+                                });
+
+                                if (violationRes.ok) {
+                                    const violationData = await violationRes.json();
+                                    const violations = violationData._embedded?.libraryViolationTypes || [];
+
+                                    violationCount = violations.length;
+
+                                    console.log(`Card ${card.cardNumber} có ${violationCount} lỗi`);
+                                } else {
+                                    console.warn(`Không thể lấy lỗi của card ${card.cardNumber}`);
+                                }
+                            } else {
+                                console.warn(`Card ${card.cardNumber} không có link violationTypes`);
                             }
+
                         } catch (err) {
-                            console.error("Error processing user data:", err);
+                            console.error("Lỗi khi xử lý thẻ:", err);
                         }
 
-                        // Check if card is expired
+                        // Xử lý ngày hết hạn
                         const expiryDate = card.expiryDate ? new Date(card.expiryDate) : null;
                         const isExpired = expiryDate ? new Date() > expiryDate : false;
                         const activated = isExpired ? false : card.activated;
@@ -281,12 +296,14 @@ class LibraryCardApi {
 
                 return processedCards;
             }
+
             return [];
         } catch (error) {
-            console.error("Error fetching library cards:", error);
+            console.error("Lỗi khi fetch thẻ thư viện:", error);
             throw error;
         }
     }
+
 
     /**
      * Fetch a single library card by ID
@@ -395,6 +412,15 @@ class LibraryCardApi {
     public async activateCard(cardId: number, userId: number, cardNumber: string): Promise<void> {
         try {
             // First update the expiry date
+            const activateResponse = await fetch(`${endpointBE}/library-card/create`, {
+                method: "PUT",
+                headers: this.getHeaders(true),
+                body: JSON.stringify({
+                    idUser: userId,
+                    cardNumber: cardNumber
+                })
+            });
+
             const updateResponse = await fetch(`${endpointBE}/library-card/update`, {
                 method: "PUT",
                 headers: this.getHeaders(true),
@@ -407,17 +433,6 @@ class LibraryCardApi {
             if (!updateResponse.ok) {
                 throw new Error("Failed to update library card expiry date");
             }
-
-            // Then activate the card
-            const activateResponse = await fetch(`${endpointBE}/library-card/create`, {
-                method: "PUT",
-                headers: this.getHeaders(true),
-                body: JSON.stringify({
-                    idUser: userId,
-                    cardNumber: cardNumber
-                })
-            });
-
             if (!activateResponse.ok) {
                 throw new Error("Failed to activate library card");
             }

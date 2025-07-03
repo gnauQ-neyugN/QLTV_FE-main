@@ -7,7 +7,8 @@ export const AdminStaffEndpoints = [
     "/admin/genre",       // Quản lý thể loại
     "/admin/user",        // Quản lý tài khoản
     "/admin/order",       // Quản lý đơn hàng
-    "/admin/borrow",      // Quản lý mượn trả
+    "/admin/borrow",        // Quản lý mượn trả
+    "/admin/dashboard",
     "/admin/library-card" // Quản lý thẻ thư viện
 ];
 
@@ -55,7 +56,7 @@ export const getDefaultAdminPath = (userRole: string): string => {
     }
 
     if (userRole === "STAFF") {
-        return "/admin/book"; // Staff sẽ được redirect về trang quản lý sách
+        return "/admin/dashboard"; // Staff sẽ được redirect về trang quản lý sách
     }
 
     return "/error-403";

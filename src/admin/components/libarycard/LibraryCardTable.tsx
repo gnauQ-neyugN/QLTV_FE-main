@@ -175,23 +175,6 @@ const LibraryCardTable: React.FC<LibraryCardTableProps> = ({
             }
         },
         {
-            field: "violationCount",
-            headerName: "Vi phạm",
-            width: 100,
-            renderCell: (params) => (
-                params.row.violationCount > 0 ? (
-                    <Chip
-                        icon={<ErrorOutlineIcon />}
-                        label={params.row.violationCount}
-                        color="warning"
-                        size="small"
-                    />
-                ) : (
-                    <span>0</span>
-                )
-            )
-        },
-        {
             field: "actions",
             headerName: "Thao tác",
             width: 180,

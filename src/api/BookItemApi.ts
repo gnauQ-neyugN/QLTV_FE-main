@@ -99,7 +99,8 @@ export async function getBookItemById(id: number): Promise<BookItemModel> {
         bookData.idDdcCategory ?? [],
         bookData.genresList ?? [],
         bookData.ddcCategoryList ?? [],
-        bookData.isFavorited ?? false
+        bookData.isFavorited ?? false,
+        bookData.location ?? "",
     );
 
     return new BookItemModel(

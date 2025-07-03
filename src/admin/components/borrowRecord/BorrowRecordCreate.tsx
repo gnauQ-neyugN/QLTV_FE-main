@@ -361,7 +361,6 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                         {card.user ? (
                                             <>
                                                 <div>Tên: {card.user.firstName} {card.user.lastName}</div>
-                                                <small>Username: {card.user.username}</small>
                                             </>
                                         ) : (
                                             'Không có thông tin user'
@@ -424,10 +423,6 @@ const BorrowRecordCreate: React.FC<BorrowRecordCreateProps> = ({ handleCloseModa
                                                 'N/A'
                                             }
                                         </div>
-                                    </div>
-                                    <div className="col-3">
-                                        <small className="text-muted">Username</small>
-                                        <div className="fw-bold">{selectedCard.user?.username || 'N/A'}</div>
                                     </div>
                                     <div className="col-3">
                                         <small className="text-muted">Trạng thái thẻ</small>

@@ -585,6 +585,7 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
                                     <th style={{ width: "5%" }}>STT</th>
                                     <th style={{ width: "25%" }}>Tên sách</th>
                                     <th style={{ width: "12%" }}>Mã vạch</th>
+                                    <th style={{ width: "25%" }}>Vị trí</th>
                                     {props.searchType === "return" && <th style={{ width: "8%" }}>Trạng thái</th>}
                                     {props.searchType === "return" && <th style={{ width: "10%" }}>Ngày trả</th>}
                                     {props.searchType === "return" && <th style={{ width: "12%" }}>Vi phạm</th>}
@@ -608,6 +609,9 @@ const BorrowRecordSearch: React.FC<BorrowRecordSearchProps> = (props) => {
                                             </td>
                                             <td>
                                                 <span className="fw-bold">{detail.bookItem.barcode}</span>
+                                            </td>
+                                            <td>
+                                                <span className="fw-bold">{detail.bookItem.location}</span>
                                             </td>
                                             {props.searchType === "return" && (
                                                 <>

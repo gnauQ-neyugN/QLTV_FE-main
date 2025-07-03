@@ -102,7 +102,7 @@ export const Slidebar: React.FC<SlidebarProps> = (props) => {
 								>
 									<LibraryBooksIcon fontSize='small'/>
 									<span className='ms-2 d-none d-sm-inline d-md-inline'>
-										Quản lý BookItem
+										Quản lý sách mượn
 									</span>
 								</NavLink>
 							</li>

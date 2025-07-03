@@ -23,30 +23,10 @@ class BookModel {
    genresList?: GenreModel[];
    ddcCategoryList?: DdcCategoryModel[];
    isFavorited?: boolean;
+   location?: string;
 
-   constructor(
-       id: any,
-       idBook: number,
-       nameBook: string,
-       author: string,
-       isbn: string,
-       description: string,
-       listPrice: number,
-       sellPrice: number,
-       quantityForSold: number,
-       quantityForBorrow: number,
-       borrowQuantity: number,
-       avgRating: number,
-       soldQuantity: number,
-       discountPercent: number,
-       thumbnail: string,
-       relatedImg: string[],
-       idGenres: number[],
-       idDdcCategory: number[],
-       genresList: GenreModel[],
-       ddcCategoryList: DdcCategoryModel[],
-       isFavorited: boolean
-   ) {
+
+   constructor(id: any, idBook: number, nameBook: string, author: string, isbn: string, description: string, listPrice: number, sellPrice: number, quantityForSold: number, quantityForBorrow: number, borrowQuantity: number, avgRating: number, soldQuantity: number, discountPercent: number, thumbnail: string, relatedImg: string[], idGenres: number[], idDdcCategory: number[], genresList: GenreModel[], ddcCategoryList: DdcCategoryModel[], isFavorited: boolean, location: string) {
       this.id = id;
       this.idBook = idBook;
       this.nameBook = nameBook;
@@ -68,6 +48,7 @@ class BookModel {
       this.genresList = genresList;
       this.ddcCategoryList = ddcCategoryList;
       this.isFavorited = isFavorited;
+      this.location = location;
    }
 }
 

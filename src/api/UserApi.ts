@@ -38,6 +38,37 @@ export async function getAllUserRole(): Promise<UserModel[]> {
    return data;
 }
 
+export async function getAllCustomerUsers(): Promise<UserModel[]> {
+   const endpoint: string = endpointBE + `/roles`;
+   const response = await requestAdmin(endpoint);
+
+   const data = response?._embedded?.roles
+       ?.filter((roleData: any) => roleData.nameRole === "CUSTOMER") // 🔍 chỉ lấy role là CUSTOMER
+       ?.flatMap((roleData: any) => {
+          return roleData?._embedded?.listUsers?.map((userData: any) => {
+             const user: UserModel = {
+                idUser: userData.idUser,
+                avatar: userData.avatar,
+                dateOfBirth: userData.dateOfBirth,
+                deliveryAddress: userData.deliveryAddress,
+                email: userData.email,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                gender: userData.gender,
+                phoneNumber: userData.phoneNumber,
+                username: userData.username,
+                role: roleData.nameRole,
+                enabled: userData.enabled,
+                identifierCode: userData.identifierCode,
+             };
+             return user;
+          }) ?? [];
+       }) ?? [];
+
+   return data;
+}
+
+
 export async function get1User(idUser: any): Promise<UserModel> {
    const endpoint = endpointBE + `/users/${idUser}`;
    const responseUser = await request(endpoint);

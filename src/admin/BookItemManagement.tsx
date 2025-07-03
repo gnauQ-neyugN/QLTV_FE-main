@@ -69,7 +69,7 @@ const BookItemManagement: React.FC = () => {
                     <Link underline="hover" color="inherit" href="/admin">
                         Trang chủ
                     </Link>
-                    <Typography color="text.primary">Quản lý BookItem</Typography>
+                    <Typography color="text.primary">Quản lý sách mượn</Typography>
                 </Breadcrumbs>
             </Box>
 
@@ -84,25 +84,12 @@ const BookItemManagement: React.FC = () => {
                     }}
                 >
                     <Typography variant="h4" component="h1" gutterBottom>
-                        Quản lý BookItem
+                        Quản lý sách mượn
                     </Typography>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={handleAddBookItem}
-                        sx={{
-                            backgroundColor: "#1976d2",
-                            "&:hover": {
-                                backgroundColor: "#1565c0",
-                            },
-                        }}
-                    >
-                        Thêm BookItem
-                    </Button>
                 </Box>
 
                 <Typography variant="body2" color="text.secondary">
-                    Quản lý thông tin các bản sao sách trong thư viện
+                    Quản lý thông tin các sách mượn trong thư viện
                 </Typography>
             </Paper>
 

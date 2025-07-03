@@ -12,48 +12,48 @@ export const PERMISSIONS: Permission[] = [
         module: "dashboard",
         description: "Dashboard - Thống kê tổng quan",
         adminAccess: true,
-        staffAccess: false // Staff không được xem dashboard
+        staffAccess: true // Staff không được xem dashboard
     },
     {
         module: "book",
         description: "Quản lý sách",
-        adminAccess: true,
+        adminAccess: false,
         staffAccess: true // Staff được phép quản lý sách
     },
     {
         module: "book-item",
         description: "Quản lý BookItem",
-        adminAccess: true,
+        adminAccess: false,
         staffAccess: true // Staff được phép quản lý BookItem
     },
     {
         module: "genre",
         description: "Quản lý thể loại",
-        adminAccess: true,
+        adminAccess: false,
         staffAccess: true // Staff được phép quản lý thể loại
     },
     {
         module: "user",
         description: "Quản lý tài khoản",
-        adminAccess: true,
+        adminAccess: false,
         staffAccess: true // Staff được phép quản lý tài khoản
     },
     {
         module: "order",
         description: "Quản lý đơn hàng",
-        adminAccess: true,
+        adminAccess: false,
         staffAccess: true // Staff được phép quản lý đơn hàng
     },
     {
         module: "borrow",
         description: "Quản lý mượn trả",
-        adminAccess: true,
+        adminAccess: false,
         staffAccess: true // Staff được phép quản lý mượn trả
     },
     {
         module: "library-card",
         description: "Quản lý thẻ thư viện",
-        adminAccess: true,
+        adminAccess: false,
         staffAccess: true // Staff được phép quản lý thẻ thư viện
     },
     {

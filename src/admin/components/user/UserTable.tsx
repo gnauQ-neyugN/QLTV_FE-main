@@ -20,7 +20,7 @@ import { GridColDef } from "@mui/x-data-grid";
 import React, { useEffect, useState, useMemo } from "react";
 import { DataTable } from "../../../layouts/utils/DataTable";
 import UserModel from "../../../model/UserModel";
-import { getAllUserRole } from "../../../api/UserApi";
+import {getAllCustomerUsers, getAllUserRole } from "../../../api/UserApi";
 import { useConfirm } from "material-ui-confirm";
 import { toast } from "react-toastify";
 import { endpointBE } from "../../../layouts/utils/Constant";
@@ -80,10 +80,9 @@ export const UserTable: React.FC<UserTableProps> = (props) => {
 	}
 
 	useEffect(() => {
-		getAllUserRole()
+		getAllCustomerUsers() // ✅ chỉ lấy các user có role là CUSTOMER
 			.then((response) => {
 				let users = response
-					.flat()
 					.map((user) => ({ ...user, id: user.idUser }));
 				users = users.sort((u1, u2) => u1.idUser - u2.idUser);
 				setData(users);
@@ -94,6 +93,7 @@ export const UserTable: React.FC<UserTableProps> = (props) => {
 				setLoading(false);
 			});
 	}, [props.keyCountReload]);
+
 
 	// Lọc dữ liệu dựa trên search term và filters
 	const filteredData = useMemo(() => {

@@ -255,47 +255,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = (props) => {
 										</div>
 									}
 								/>
-
-								<FormControlLabel
-									value={2}
-									control={<Radio />}
-									label={
-										<div
-											style={{
-												display: "flex",
-												alignItems: "center",
-											}}
-										>
-											<img
-												src='https://cdn0.fahasa.com/skin/frontend/base/default/images/payment_icon/ico_vnpay.svg?q=10311'
-												alt='Cash on Delivery'
-												style={{
-													width: "40px",
-													marginRight: "10px",
-												}}
-											/>
-											Thanh toán bằng VNPAY
-										</div>
-									}
-								/>
 							</RadioGroup>
 						</FormControl>
-					</div>
-					<div className='container bg-light my-3 rounded-3 p-3'>
-						<strong className='fs-6'>MÃ KHUYẾN GIẢM GIÁ</strong>
-						<hr />
-						<div className='d-flex align-items-end w-50'>
-							<TextField
-								className='w-50'
-								id='standard-basic'
-								label='Mã khuyến mãi (nếu có): '
-								variant='standard'
-								value={""}
-							/>
-							<Button className='ms-3' variant='outlined'>
-								Áp dụng
-							</Button>
-						</div>
 					</div>
 					<div className='container bg-light my-3 rounded-3 p-3'>
 						<strong className='fs-6'>GHI CHÚ</strong>

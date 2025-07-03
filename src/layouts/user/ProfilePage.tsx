@@ -890,22 +890,6 @@ const ProfilePage: React.FC<ProfilePageProps> = (props) => {
 															</div>
 														</CardContent>
 													</Card>
-
-													{/*/!* Section hiển thị lịch sử mượn sách *!/*/}
-													{/*<Card>*/}
-													{/*	<CardContent>*/}
-													{/*		<Typography variant="h6" component="div"*/}
-													{/*					className="mb-3 d-flex align-items-center">*/}
-													{/*			<LibraryBooksIcon*/}
-													{/*				style={{marginRight: '10px', color: '#1976d2'}}/>*/}
-													{/*			Lịch sử mượn sách*/}
-													{/*		</Typography>*/}
-													{/*		<Typography variant="body2" color="text.secondary">*/}
-													{/*			Chức năng hiển thị lịch sử mượn sách sẽ được cập nhật*/}
-													{/*			trong thời gian tới.*/}
-													{/*		</Typography>*/}
-													{/*	</CardContent>*/}
-													{/*</Card>*/}
 												</div>
 											)}
 										</>

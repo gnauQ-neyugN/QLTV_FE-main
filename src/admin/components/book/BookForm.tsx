@@ -40,6 +40,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 		relatedImg: [],
 		idGenres: [],
 		idDdcCategory: [],
+		location: "",
 	});
 	const [genresList, setGenresList] = useState<GenreModel[]>([]);
 	const [ddcCategoriesList, setDdcCategoriesList] = useState<DdcCategoryModel[]>([]);
@@ -173,6 +174,7 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 							relatedImg: [],
 							idGenres: [],
 							idDdcCategory: [],
+							location:"",
 						});
 						setPreviewThumbnail("");
 						setPreviewRelatedImages([]);
@@ -187,9 +189,13 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 						toast.error("Gặp lỗi trong quá trình xử lý sách");
 						setStatusBtn(false);
 					}
+					console.log("bookRequest gửi lên:", bookRequest);
+					console.log("JSON.stringify(bookRequest):", JSON.stringify(bookRequest, null, 2));
+
 				})
 				.catch((error) => {
 					console.log(error);
+					error.printStackTrace();
 					setStatusBtn(false);
 					toast.error("Gặp lỗi trong quá trình xử lý sách");
 				}),
@@ -472,6 +478,16 @@ export const BookForm: React.FC<BookFormProps> = (props) => {
 									}
 									size='small'
 									disabled={props.option === "update"}
+								/>
+								<TextField
+									id="filled-required"
+									label="Vị trí sách"
+									style={{ width: "100%" }}
+									value={book.location || ""}
+									onChange={(e: any) =>
+										setBook({ ...book, location: e.target.value })
+									}
+									size="small"
 								/>
 
 								<TextField
